@@ -135,9 +135,7 @@ test("the receipt: title, the day, its cost, then its parts", () => {
   expect(c.empty).toBe("")
   // no errors, no ERRORS line
   expect(V.card({ ...day, errors: 0 }, "en", {}, now).stats.map((s) => s.label)).toEqual(["STREAK", "REQUESTS", "VS AVERAGE DAY"])
-  // the footer is magpie's, one word of each line bold
-  for (const t of Object.values(V.TEXT)) expect(t.footer[0][1]).toBe("magpie")
-  // and the receipt credits nowdex, whose design it follows, in every language
+  // the receipt credits nowdex, whose design it follows, in every language
   for (const lang of Object.keys(V.TEXT)) expect(V.card(day, lang, {}, now).credit).toContain("nowdex.app")
 })
 
@@ -245,6 +243,8 @@ test("dates in the reader's language, by the calendar", () => {
 
 test("numbers read short", () => {
   expect([V.count(999), V.count(12345), V.count(123456), V.count(1234567), V.count(12345678), V.count(172e6), V.count(2.5e9), V.count(10.1e9)]).toEqual(["999", "12,345", "123K", "1.23M", "12.3M", "172M", "2.50B", "10.1B"])
+  // Chinese and Japanese count in 万 and 亿
+  expect([V.count(123.4e6, "zh"), V.count(14.9e6, "zh"), V.count(14.5e6, "zh-CN"), V.count(206e3, "zh"), V.count(9876, "zh"), V.count(14.9e6, "ja"), V.count(14.9e6, "en")]).toEqual(["1.23亿", "1490万", "1450万", "21万", "9876", "1490万", "14.9M"])
 })
 
 test("the receipt's face comes with the page, as data the frame can load", () => {

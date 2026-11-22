@@ -1,0 +1,4 @@
+# magpie inlines a page's scripts into the frame and allows them by SHA-256,
+# so a page's files must keep LF: a CRLF working copy is hashed one way and
+# inlined another, and the frame blocks every script (seen on Docker).
+packages/day-card/page/** text eol=lf

@@ -7,13 +7,12 @@
 (() => {
   const TEXT = {
     en: {
-      title: "DAILY AI STATEMENT", tagline: "Routed through magpie.",
+      title: "DAILY AI STATEMENT",
       date: "DATE", issued: "ISSUED", at: "AT",
-      total: "TOTAL API COST", totalNote: "API-EQUIVALENT COST · NOT AN INVOICE",
+      total: "TOTAL COST", totalNote: "API-EQUIVALENT COST",
       streak: "STREAK", days: (n) => (n === 1 ? "1 DAY" : `${n} DAYS`), requests: "REQUESTS", errors: "ERRORS", vsAverage: "VS AVERAGE DAY",
       agentModel: "AGENT / MODEL", cost: "COST",
       totalTokens: "TOTAL TOKENS", input: "INPUT", output: "OUTPUT", hit: "CACHE HIT RATE",
-      footer: [["Get ", "magpie", " at usemagpie.ai"], ["Every agent's AI usage, on Mac, Windows and Linux"]],
       credit: "Design inspired by nowdex.app",
       noCalls: "No calls on this day.", more: (n) => `+${n} MORE`, unpriced: (n) => (n === 1 ? "1 request without a price" : `${n} requests without a price`),
       noAgent: "NO AGENT NAMED",
@@ -26,13 +25,12 @@
       "bg-none": "No background", "bg-teal": "Teal", "bg-gingham": "Gingham", "bg-grid": "Graph paper", "bg-kraft": "Kraft paper", "bg-cyan": "Cyanotype", "bg-dots": "Night dots", "bg-deck": "Deckchair stripes", "bg-linen": "Olive linen", "bg-seigaiha": "Seigaiha waves", "bg-xuan": "Xuan paper", "bg-zigzag": "Zigzag", "bg-terracotta": "Terracotta", "bg-lilac": "Lilac lines", "bg-velvet": "Green velvet", "bg-polka": "Apricot polka", "bg-alpine": "Alpine dawn", "bg-sea": "Misty shore", "bg-dunes": "Dunes", "bg-lake": "Forest lake", "bg-custom": "Your picture",
     },
     zh: {
-      title: "每日 AI 账单", tagline: "经 magpie 路由",
+      title: "每日 AI 账单",
       date: "日期", issued: "开具", at: "",
-      total: "API 总费用", totalNote: "按 API 价格折算 · 非发票",
+      total: "总费用", totalNote: "按 API 价格折算",
       streak: "连续使用", days: (n) => `${n} 天`, requests: "请求数", errors: "错误", vsAverage: "对比日均",
       agentModel: "AGENT / 模型", cost: "费用",
       totalTokens: "TOKEN 总量", input: "输入", output: "输出", hit: "缓存命中率",
-      footer: [["在 usemagpie.ai 下载 ", "magpie", ""], ["在 Mac、Windows、Linux 上统计每个 Agent 的 AI 用量"]],
       credit: "设计灵感来自 nowdex.app",
       noCalls: "这一天没有调用。", more: (n) => `还有 ${n} 个`, unpriced: (n) => `${n} 次请求没有价格`,
       noAgent: "未标明 AGENT",
@@ -45,13 +43,12 @@
       "bg-none": "无背景", "bg-teal": "青绿", "bg-gingham": "野餐格", "bg-grid": "方格纸", "bg-kraft": "牛皮纸", "bg-cyan": "蓝晒", "bg-dots": "夜色网点", "bg-deck": "躺椅条纹", "bg-linen": "橄榄亚麻", "bg-seigaiha": "青海波", "bg-xuan": "宣纸", "bg-zigzag": "人字纹", "bg-terracotta": "赤陶", "bg-lilac": "雾紫细线", "bg-velvet": "墨绿丝绒", "bg-polka": "杏色波点", "bg-alpine": "雪山晨光", "bg-sea": "雾中海岸", "bg-dunes": "沙丘", "bg-lake": "林间湖", "bg-custom": "自己的图片",
     },
     "zh-TW": {
-      title: "每日 AI 帳單", tagline: "經 magpie 路由",
+      title: "每日 AI 帳單",
       date: "日期", issued: "開立", at: "",
-      total: "API 總費用", totalNote: "按 API 價格折算 · 非發票",
+      total: "總費用", totalNote: "按 API 價格折算",
       streak: "連續使用", days: (n) => `${n} 天`, requests: "請求數", errors: "錯誤", vsAverage: "對比日均",
       agentModel: "AGENT / 模型", cost: "費用",
       totalTokens: "TOKEN 總量", input: "輸入", output: "輸出", hit: "快取命中率",
-      footer: [["在 usemagpie.ai 下載 ", "magpie", ""], ["在 Mac、Windows、Linux 上統計每個 Agent 的 AI 用量"]],
       credit: "設計靈感來自 nowdex.app",
       noCalls: "這一天沒有呼叫。", more: (n) => `還有 ${n} 個`, unpriced: (n) => `${n} 次請求沒有價格`,
       noAgent: "未標明 AGENT",
@@ -64,13 +61,12 @@
       "bg-none": "無背景", "bg-teal": "青綠", "bg-gingham": "野餐格", "bg-grid": "方格紙", "bg-kraft": "牛皮紙", "bg-cyan": "藍曬", "bg-dots": "夜色網點", "bg-deck": "躺椅條紋", "bg-linen": "橄欖亞麻", "bg-seigaiha": "青海波", "bg-xuan": "宣紙", "bg-zigzag": "人字紋", "bg-terracotta": "赤陶", "bg-lilac": "霧紫細線", "bg-velvet": "墨綠絲絨", "bg-polka": "杏色波點", "bg-alpine": "雪山晨光", "bg-sea": "霧中海岸", "bg-dunes": "沙丘", "bg-lake": "林間湖", "bg-custom": "自己的圖片",
     },
     ja: {
-      title: "1日の AI 明細", tagline: "magpie 経由",
+      title: "1日の AI 明細",
       date: "日付", issued: "発行", at: "",
-      total: "API 合計コスト", totalNote: "API 料金換算 · 請求書ではありません",
+      total: "合計コスト", totalNote: "API 料金換算",
       streak: "連続日数", days: (n) => `${n} 日`, requests: "リクエスト", errors: "エラー", vsAverage: "平均日との比較",
       agentModel: "エージェント / モデル", cost: "コスト",
       totalTokens: "合計トークン", input: "入力", output: "出力", hit: "キャッシュヒット率",
-      footer: [["usemagpie.ai で ", "magpie", " を入手"], ["Mac・Windows・Linux で全エージェントの AI 使用量を"]],
       credit: "デザインは nowdex.app に着想を得ています",
       noCalls: "この日の呼び出しはありません。", more: (n) => `ほか ${n} 件`, unpriced: (n) => `価格のないリクエスト ${n} 件`,
       noAgent: "エージェント名なし",
@@ -83,13 +79,12 @@
       "bg-none": "背景なし", "bg-teal": "ティール", "bg-gingham": "ギンガム", "bg-grid": "方眼紙", "bg-kraft": "クラフト紙", "bg-cyan": "青写真", "bg-dots": "夜のドット", "bg-deck": "デッキチェア", "bg-linen": "オリーブリネン", "bg-seigaiha": "青海波", "bg-xuan": "宣紙", "bg-zigzag": "ジグザグ", "bg-terracotta": "テラコッタ", "bg-lilac": "ライラック", "bg-velvet": "深緑ベルベット", "bg-polka": "アプリコット水玉", "bg-alpine": "雪山の朝", "bg-sea": "霧の海辺", "bg-dunes": "砂丘", "bg-lake": "森の湖", "bg-custom": "自分の画像",
     },
     de: {
-      title: "TÄGLICHE KI-ABRECHNUNG", tagline: "Geroutet über magpie.",
+      title: "TÄGLICHE KI-ABRECHNUNG",
       date: "DATUM", issued: "AUSGESTELLT", at: "UM",
-      total: "API-GESAMTKOSTEN", totalNote: "API-ÄQUIVALENT · KEINE RECHNUNG",
+      total: "GESAMTKOSTEN", totalNote: "API-ÄQUIVALENT",
       streak: "SERIE", days: (n) => (n === 1 ? "1 TAG" : `${n} TAGE`), requests: "ANFRAGEN", errors: "FEHLER", vsAverage: "VS. DURCHSCHNITTSTAG",
       agentModel: "AGENT / MODELL", cost: "KOSTEN",
       totalTokens: "TOKENS GESAMT", input: "EINGABE", output: "AUSGABE", hit: "CACHE-TREFFERQUOTE",
-      footer: [["Hol dir ", "magpie", " auf usemagpie.ai"], ["Die KI-Nutzung jedes Agents, auf Mac, Windows und Linux"]],
       credit: "Design inspiriert von nowdex.app",
       noCalls: "An diesem Tag keine Aufrufe.", more: (n) => `+${n} WEITERE`, unpriced: (n) => (n === 1 ? "1 Anfrage ohne Preis" : `${n} Anfragen ohne Preis`),
       noAgent: "OHNE AGENT",
@@ -114,9 +109,17 @@
   const text = (lang) => TEXT[langOf(lang)];
 
   // 1234 → "1,234"; 1234567 → "1.23M"; 172e6 → "172M"; 10.1e9 → "10.1B"
-  function count(n) {
+  // Chinese and Japanese count in 万 (10,000) and 亿 (100,000,000):
+  // 123.4e6 → "1.23亿", 14.9e6 → "1490万"
+  function count(n, lang) {
     n = Number(n) || 0;
     const a = Math.abs(n);
+    const l = langOf(lang);
+    if (l === "zh" || l === "zh-TW" || l === "ja") {
+      if (a >= 1e8) return (n / 1e8).toFixed(2) + "亿";
+      if (a >= 1e4) return String(Math.round(n / 1e4)) + "万";
+      return String(Math.round(n));
+    }
     if (a >= 1e9) return (n / 1e9).toFixed(a >= 1e10 ? 1 : 2) + "B";
     if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e8 ? 0 : a >= 1e7 ? 1 : 2) + "M";
     if (a >= 1e5) return (n / 1e3).toFixed(0) + "K";
@@ -272,9 +275,9 @@
   const upper = (s) => String(s).toLocaleUpperCase();
 
   // The receipt, as the drawing lays it out:
-  // { title, tagline, head[{label, value}], totalLabel, total, totalNote,
+  // { title, head[{label, value}], totalLabel, total, totalNote,
   //   stats[], agentHead[2], agents[{name, icon, value, models[{name, icon,
-  //   value}], more}], moreAgents, tokens[], note, empty, footer[[a, b, c]], credit }
+  //   value}], more}], moreAgents, tokens[], note, empty, credit }
   // An agent shows its first `models` models by cost, and the card its
   // first `agents` agents.
   function card(day, lang, limits = {}, now = new Date()) {
@@ -317,7 +320,6 @@
     }
     return {
       title: span === "day" ? t.title : t[{ week: "titleWeek", month: "titleMonth", all: "titleAll" }[span]],
-      tagline: t.tagline,
       head: [
         span === "day" ? { label: t.date, value: receiptDate(day.date, lang) } : { label: t.period, value: receiptRange(day.from, day.date, lang) },
         { label: t.issued, value: issued(now, lang) },
@@ -330,14 +332,13 @@
       agents: shown,
       moreAgents: hiddenAgents ? t.more(hiddenAgents) : "",
       tokens: [
-        { label: t.totalTokens, value: count(tokensOf(day)) },
-        { label: t.input, value: count(day.input) },
-        { label: t.output, value: count(day.output) },
+        { label: t.totalTokens, value: count(tokensOf(day), lang) },
+        { label: t.input, value: count(day.input, lang) },
+        { label: t.output, value: count(day.output, lang) },
         { label: t.hit, value: percent(hitRate(day)) },
       ],
       note: Number(day.unpriced) > 0 ? t.unpriced(Number(day.unpriced)) : "",
       empty: calls === 0 ? (span === "day" ? t.noCalls : t.noCallsSpan) : "",
-      footer: t.footer,
       credit: t.credit,
     };
   }

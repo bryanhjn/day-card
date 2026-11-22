@@ -215,7 +215,7 @@
     ctx.textBaseline = "alphabetic";
     let y = 0;
 
-    // title and tagline
+    // title
     y += 54;
     ctx.fillStyle = INK;
     sized(ctx, 800, 30, c.title, inner);
@@ -223,12 +223,9 @@
     glow(true);
     ctx.fillText(c.title, PW / 2, y);
     glow(false);
-    y += 25;
-    ctx.font = f(400, 11.5);
-    ctx.fillText(c.tagline, PW / 2, y);
 
     // the day, and when this was drawn
-    y += 27;
+    y += 34;
     c.head.forEach((h, i) => {
       if (i) y += 22;
       row(h.label, h.value, y);
@@ -251,6 +248,19 @@
     sized(ctx, 400, 10.5, c.totalNote, inner);
     spaced(ctx, c.totalNote, PW / 2, y, 1.6, inner);
     y += 16;
+    rule(y);
+
+    // the tokens, right under the cost
+    y += 25;
+    c.tokens.forEach((s, i) => {
+      if (i) y += 21;
+      row(s.label, s.value, y);
+    });
+    if (c.note) {
+      y += 21;
+      row(c.note, "", y, { colour: MUTED, px: 11 });
+    }
+    y += 18;
     rule(y);
 
     // streak, requests, against an average day
@@ -313,37 +323,9 @@
     y += 17;
     rule(y);
 
-    // the tokens
-    y += 25;
-    c.tokens.forEach((s, i) => {
-      if (i) y += 21;
-      row(s.label, s.value, y);
-    });
-    if (c.note) {
-      y += 21;
-      row(c.note, "", y, { colour: MUTED, px: 11 });
-    }
-    y += 18;
-    rule(y);
-
-    // the footer, one word of it bold
-    y += 22;
-    for (const line of c.footer) {
-      const parts = line.map((s, i) => ({ s, w: i === 1 ? 700 : 400 })).filter((p) => p.s);
-      const width = parts.reduce((n, p) => { ctx.font = f(p.w, 10.5); return n + ctx.measureText(p.s).width; }, 0);
-      let x = PW / 2 - width / 2;
-      ctx.fillStyle = INK;
-      ctx.textAlign = "left";
-      for (const p of parts) {
-        ctx.font = f(p.w, 10.5);
-        ctx.fillText(p.s, x, y);
-        x += ctx.measureText(p.s).width;
-      }
-      y += 20;
-    }
-
     // whose design the receipt follows
     if (c.credit) {
+      y += 22;
       ctx.font = f(400, 9.5);
       ctx.fillStyle = MUTED;
       ctx.textAlign = "center";
@@ -497,7 +479,7 @@
       const a = document.createElement("span");
       a.textContent = V.dateLabel(x.date, lang);
       const b = document.createElement("span");
-      b.textContent = x.tokens ? V.count(x.tokens) : "";
+      b.textContent = x.tokens ? V.count(x.tokens, lang) : "";
       li.append(a, b);
       return li;
     }));
