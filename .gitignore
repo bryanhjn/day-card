@@ -6,3 +6,6 @@ node_modules/
 
 # atomcode 插件运行时状态（本地生成，不入库）
 atomcode-state.json
+
+# Trae 生成 HTML 分享包时的临时产物（本地生成，不入库）
+.trae-html-share-packages/
