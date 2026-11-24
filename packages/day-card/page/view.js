@@ -11,7 +11,8 @@
       date: "DATE", issued: "ISSUED", at: "AT",
       total: "TOTAL COST", totalNote: "API-EQUIVALENT COST",
       streak: "STREAK", days: (n) => (n === 1 ? "1 DAY" : `${n} DAYS`), requests: "REQUESTS", errors: "ERRORS", vsAverage: "VS AVERAGE DAY",
-      agentModel: "AGENT / MODEL", cost: "COST",
+      agentModel: "AGENT / MODEL", model: "MODEL", token: "TOKEN", cost: "COST",
+      byAgent: "Agent", byModel: "Model", byLabel: "Group by",
       totalTokens: "TOTAL TOKENS", input: "INPUT", output: "OUTPUT", hit: "CACHE HIT RATE",
       credit: "Design inspired by nowdex.app",
       noCalls: "No calls on this day.", more: (n) => `+${n} MORE`, unpriced: (n) => (n === 1 ? "1 request without a price" : `${n} requests without a price`),
@@ -25,36 +26,38 @@
       "bg-none": "No background", "bg-teal": "Teal", "bg-gingham": "Gingham", "bg-grid": "Graph paper", "bg-kraft": "Kraft paper", "bg-cyan": "Cyanotype", "bg-dots": "Night dots", "bg-deck": "Deckchair stripes", "bg-linen": "Olive linen", "bg-seigaiha": "Seigaiha waves", "bg-xuan": "Xuan paper", "bg-zigzag": "Zigzag", "bg-terracotta": "Terracotta", "bg-lilac": "Lilac lines", "bg-velvet": "Green velvet", "bg-polka": "Apricot polka", "bg-alpine": "Alpine dawn", "bg-sea": "Misty shore", "bg-dunes": "Dunes", "bg-lake": "Forest lake", "bg-custom": "Your picture",
     },
     zh: {
-      title: "每日 AI 账单",
+      title: "每日 AI 小票",
       date: "日期", issued: "开具", at: "",
       total: "总费用", totalNote: "按 API 价格折算",
       streak: "连续使用", days: (n) => `${n} 天`, requests: "请求数", errors: "错误", vsAverage: "对比日均",
-      agentModel: "AGENT / 模型", cost: "费用",
+      agentModel: "AGENT / 模型", model: "模型", token: "TOKEN", cost: "费用",
+      byAgent: "Agent", byModel: "模型", byLabel: "统计方式",
       totalTokens: "TOKEN 总量", input: "输入", output: "输出", hit: "缓存命中率",
       credit: "设计灵感来自 nowdex.app",
       noCalls: "这一天没有调用。", more: (n) => `还有 ${n} 个`, unpriced: (n) => `${n} 次请求没有价格`,
       noAgent: "未标明 AGENT",
       today: "今天", prev: "前一天", next: "后一天", copy: "复制图片", copied: "已复制", save: "保存 PNG", saved: "已保存到",
       failed: "读取用量失败", shareFailed: "分享图片失败", update: "这个卡片需要更新版本的 magpie。请更新 magpie 后再打开。",
-      titleWeek: "每周 AI 账单", titleMonth: "每月 AI 账单", titleAll: "累计 AI 账单", period: "区间", activeDays: "活跃天数", avgDay: "活跃日均",
+      titleWeek: "每周 AI 小票", titleMonth: "每月 AI 小票", titleAll: "累计 AI 小票", period: "区间", activeDays: "活跃天数", avgDay: "活跃日均",
       noCallsSpan: "这段时间没有调用。", spanDay: "日", spanWeek: "周", spanMonth: "月", spanAll: "全部", spanLabel: "统计区间", earlier: "更早", later: "更晚", allTime: "全部时间",
       updateSpan: "周、月和全部账单需要更新版本的 magpie。请更新 magpie 后再打开。",
       background: "背景", padding: "边距", blur: "模糊", dim: "压暗", upload: "用自己的图片", removeImage: "删除这张图片", imageFailed: "这张图片用不了", keepFailed: "背景没能保存",
       "bg-none": "无背景", "bg-teal": "青绿", "bg-gingham": "野餐格", "bg-grid": "方格纸", "bg-kraft": "牛皮纸", "bg-cyan": "蓝晒", "bg-dots": "夜色网点", "bg-deck": "躺椅条纹", "bg-linen": "橄榄亚麻", "bg-seigaiha": "青海波", "bg-xuan": "宣纸", "bg-zigzag": "人字纹", "bg-terracotta": "赤陶", "bg-lilac": "雾紫细线", "bg-velvet": "墨绿丝绒", "bg-polka": "杏色波点", "bg-alpine": "雪山晨光", "bg-sea": "雾中海岸", "bg-dunes": "沙丘", "bg-lake": "林间湖", "bg-custom": "自己的图片",
     },
     "zh-TW": {
-      title: "每日 AI 帳單",
+      title: "每日 AI 小票",
       date: "日期", issued: "開立", at: "",
       total: "總費用", totalNote: "按 API 價格折算",
       streak: "連續使用", days: (n) => `${n} 天`, requests: "請求數", errors: "錯誤", vsAverage: "對比日均",
-      agentModel: "AGENT / 模型", cost: "費用",
+      agentModel: "AGENT / 模型", model: "模型", token: "TOKEN", cost: "費用",
+      byAgent: "Agent", byModel: "模型", byLabel: "統計方式",
       totalTokens: "TOKEN 總量", input: "輸入", output: "輸出", hit: "快取命中率",
       credit: "設計靈感來自 nowdex.app",
       noCalls: "這一天沒有呼叫。", more: (n) => `還有 ${n} 個`, unpriced: (n) => `${n} 次請求沒有價格`,
       noAgent: "未標明 AGENT",
       today: "今天", prev: "前一天", next: "後一天", copy: "複製圖片", copied: "已複製", save: "儲存 PNG", saved: "已儲存到",
       failed: "讀取用量失敗", shareFailed: "分享圖片失敗", update: "這張卡片需要更新版本的 magpie。請更新 magpie 後再開啟。",
-      titleWeek: "每週 AI 帳單", titleMonth: "每月 AI 帳單", titleAll: "累計 AI 帳單", period: "區間", activeDays: "活躍天數", avgDay: "活躍日均",
+      titleWeek: "每週 AI 小票", titleMonth: "每月 AI 小票", titleAll: "累計 AI 小票", period: "區間", activeDays: "活躍天數", avgDay: "活躍日均",
       noCallsSpan: "這段時間沒有呼叫。", spanDay: "日", spanWeek: "週", spanMonth: "月", spanAll: "全部", spanLabel: "統計區間", earlier: "更早", later: "更晚", allTime: "全部時間",
       updateSpan: "週、月和全部帳單需要更新版本的 magpie。請更新 magpie 後再開啟。",
       background: "背景", padding: "邊距", blur: "模糊", dim: "壓暗", upload: "用自己的圖片", removeImage: "刪除這張圖片", imageFailed: "這張圖片用不了", keepFailed: "背景沒能儲存",
@@ -65,7 +68,8 @@
       date: "日付", issued: "発行", at: "",
       total: "合計コスト", totalNote: "API 料金換算",
       streak: "連続日数", days: (n) => `${n} 日`, requests: "リクエスト", errors: "エラー", vsAverage: "平均日との比較",
-      agentModel: "エージェント / モデル", cost: "コスト",
+      agentModel: "エージェント / モデル", model: "モデル", token: "TOKEN", cost: "コスト",
+      byAgent: "エージェント", byModel: "モデル", byLabel: "集計",
       totalTokens: "合計トークン", input: "入力", output: "出力", hit: "キャッシュヒット率",
       credit: "デザインは nowdex.app に着想を得ています",
       noCalls: "この日の呼び出しはありません。", more: (n) => `ほか ${n} 件`, unpriced: (n) => `価格のないリクエスト ${n} 件`,
@@ -83,7 +87,8 @@
       date: "DATUM", issued: "AUSGESTELLT", at: "UM",
       total: "GESAMTKOSTEN", totalNote: "API-ÄQUIVALENT",
       streak: "SERIE", days: (n) => (n === 1 ? "1 TAG" : `${n} TAGE`), requests: "ANFRAGEN", errors: "FEHLER", vsAverage: "VS. DURCHSCHNITTSTAG",
-      agentModel: "AGENT / MODELL", cost: "KOSTEN",
+      agentModel: "AGENT / MODELL", model: "MODELL", token: "TOKEN", cost: "KOSTEN",
+      byAgent: "Agent", byModel: "Modell", byLabel: "Gruppierung",
       totalTokens: "TOKENS GESAMT", input: "EINGABE", output: "AUSGABE", hit: "CACHE-TREFFERQUOTE",
       credit: "Design inspiriert von nowdex.app",
       noCalls: "An diesem Tag keine Aufrufe.", more: (n) => `+${n} WEITERE`, unpriced: (n) => (n === 1 ? "1 Anfrage ohne Preis" : `${n} Anfragen ohne Preis`),
@@ -279,30 +284,67 @@
   //   stats[], agentHead[2], agents[{name, icon, value, models[{name, icon,
   //   value}], more}], moreAgents, tokens[], note, empty, credit }
   // An agent shows its first `models` models by cost, and the card its
-  // first `agents` agents.
+  // first `agents` agents. `by: "model"` groups the same rows by model
+  // instead: one row a model, its cost the sum of every agent's, and no
+  // models beneath it.
   function card(day, lang, limits = {}, now = new Date()) {
     const t = text(lang);
     const maxAgents = limits.agents ?? 8;
     const maxModels = limits.models ?? 5;
+    const byModel = limits.by === "model";
     const cur = day.currency;
     const rate = day.rate;
     const calls = Number(day.calls) || 0;
     const errors = Number(day.errors) || 0;
     const agents = (Array.isArray(day.agents) ? day.agents : []).slice().sort(byCost);
-    const shown = agents.slice(0, maxAgents).map((a) => {
-      const models = (Array.isArray(a.models) ? a.models : []).slice().sort(byCost);
-      const hidden = Math.max(0, models.length - maxModels) + (Number(a.moreModels) || 0);
-      return {
-        name: upper(a.id ? a.name || a.id : t.noAgent),
-        // Amp's own logo stands in only when the host has no Amp picture to
-        // give: none, a missing one, or its generic dot.
-        icon: a.id === "amp" && (a.icon === "generic" || !day.icons?.[a.icon]?.src) ? "amp-official" : a.icon || "",
-        value: money(a.cost, cur, rate),
-        models: models.slice(0, maxModels).map((m) => ({ name: upper(m.model || "?"), icon: m.icon || "", value: money(m.cost, cur, rate) })),
-        more: hidden ? t.more(hidden) : "",
-      };
-    });
-    const hiddenAgents = Math.max(0, agents.length - maxAgents) + (Number(day.moreAgents) || 0);
+    let shown;
+    let hiddenAgents;
+    if (byModel) {
+      // usage:day lists a model only under its agent, so the same model
+      // across agents is added up here; what an agent left out is counted
+      // as left out, never guessed
+      const merged = new Map();
+      let more = 0;
+      for (const a of agents) {
+        more += Number(a.moreModels) || 0;
+        for (const m of Array.isArray(a.models) ? a.models : []) {
+          const key = `${m.provider || ""}/${m.model || ""}`;
+          const row = merged.get(key);
+          if (row) {
+            row.cost += Number(m.cost) || 0;
+            row.tokens += tokensOf(m);
+          } else {
+            merged.set(key, { name: m.model || "?", icon: m.icon || "", cost: Number(m.cost) || 0, tokens: tokensOf(m) });
+          }
+        }
+      }
+      const all = [...merged.values()].sort((a, b) => b.cost - a.cost);
+      shown = all.slice(0, maxAgents).map((m) => ({
+        name: upper(m.name),
+        icon: m.icon,
+        tokens: count(m.tokens, lang),
+        value: money(m.cost, cur, rate),
+        models: [],
+        more: "",
+      }));
+      hiddenAgents = Math.max(0, all.length - maxAgents) + more;
+    } else {
+      shown = agents.slice(0, maxAgents).map((a) => {
+        const models = (Array.isArray(a.models) ? a.models : []).slice().sort(byCost);
+        const hidden = Math.max(0, models.length - maxModels) + (Number(a.moreModels) || 0);
+        return {
+          name: upper(a.id ? a.name || a.id : t.noAgent),
+          // Amp's own logo stands in only when the host has no Amp picture to
+          // give: none, a missing one, or its generic dot.
+          icon: a.id === "amp" && (a.icon === "generic" || !day.icons?.[a.icon]?.src) ? "amp-official" : a.icon || "",
+          tokens: count(tokensOf(a), lang),
+          value: money(a.cost, cur, rate),
+          models: models.slice(0, maxModels).map((m) => ({ name: upper(m.model || "?"), icon: m.icon || "", tokens: count(tokensOf(m), lang), value: money(m.cost, cur, rate) })),
+          more: hidden ? t.more(hidden) : "",
+        };
+      });
+      hiddenAgents = Math.max(0, agents.length - maxAgents) + (Number(day.moreAgents) || 0);
+    }
     const span = limits.span && limits.span !== "day" && day.from ? limits.span : "day";
     const stats = [
       { label: t.streak, value: t.days(streak(day.days, day.date, day.today)) },
@@ -328,7 +370,8 @@
       total: money(day.cost, cur, rate),
       totalNote: t.totalNote,
       stats,
-      agentHead: [t.agentModel, t.cost],
+      agentHead: byModel ? [t.model, t.token, t.cost] : [t.agentModel, t.token, t.cost],
+      by: byModel ? "model" : "agent",
       agents: shown,
       moreAgents: hiddenAgents ? t.more(hiddenAgents) : "",
       tokens: [

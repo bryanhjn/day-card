@@ -149,7 +149,7 @@ test("a week, a month or all time is a receipt of its own", () => {
   expect(w.stats.map((s) => s.label)).not.toContain("VS AVERAGE DAY")
   expect(V.card(span, "en", { span: "month" }, now).title).toBe("MONTHLY AI STATEMENT")
   const a = V.card(span, "zh", { span: "all" }, now)
-  expect(a.title).toBe("累计 AI 账单")
+  expect(a.title).toBe("累计 AI 小票")
   expect(a.stats.slice(-2)[0]).toEqual({ label: "活跃天数", value: "4 天" })
   expect(V.card({ ...span, calls: 0 }, "en", { span: "week" }, now).empty).toBe("No calls in this period.")
   // a magpie that answers a day (no from) draws a day, never a week's title
@@ -163,7 +163,7 @@ test("a week, a month or all time is a receipt of its own", () => {
 test("agents and their models by cost, each with what was left out", () => {
   const withCost = { ...day, agents: day.agents.map((a) => ({ ...a, models: a.models.map((m, i) => ({ ...m, cost: [1, 9][i] ?? 0 })) })) }
   const c = V.card(withCost, "en", {}, now)
-  expect(c.agentHead).toEqual(["AGENT / MODEL", "COST"])
+  expect(c.agentHead).toEqual(["AGENT / MODEL", "TOKEN", "COST"])
   expect(c.agents.map((a) => [a.name, a.icon, a.value])).toEqual([
     ["CLAUDE CODE", "claude-color", "$10.00"],
     ["CODEX", "openai", "$2.30"],
@@ -181,6 +181,30 @@ test("agents and their models by cost, each with what was left out", () => {
   expect(small.agents).toHaveLength(1)
   expect(small.agents[0].more).toBe("+1 MORE")
   expect(small.moreAgents).toBe("+4 MORE")
+})
+
+test("grouped by model: one row a model, the same model added up across agents", () => {
+  const shared = {
+    ...day,
+    agents: [
+      { id: "claude", name: "Claude Code", icon: "claude-color", cost: 6, input: 400, output: 100, models: [{ model: "claude-opus-4-1", provider: "anthropic", icon: "claude-color", cost: 6, input: 400, output: 100 }] },
+      { id: "codex", name: "Codex", icon: "openai", cost: 5, moreModels: 1,
+        models: [
+          { model: "claude-opus-4-1", provider: "anthropic", icon: "claude-color", cost: 4, input: 300, output: 200, cacheRead: 1500 },
+          { model: "gpt-5-codex", provider: "openai", icon: "openai", cost: 1, input: 1000, output: 24 },
+        ] },
+    ],
+  }
+  const c = V.card(shared, "en", { by: "model" }, now)
+  expect(c.agentHead).toEqual(["MODEL", "TOKEN", "COST"])
+  expect(c.agents).toEqual([
+    { name: "CLAUDE-OPUS-4-1", icon: "claude-color", tokens: "2,500", value: "$10.00", models: [], more: "" },
+    { name: "GPT-5-CODEX", icon: "openai", tokens: "1,024", value: "$1.00", models: [], more: "" },
+  ])
+  expect(c.moreAgents).toBe("+1 MORE")
+  // the same day by agent is untouched
+  expect(V.card(shared, "en", {}, now).agentHead).toEqual(["AGENT / MODEL", "TOKEN", "COST"])
+  expect(V.card(shared, "zh", { by: "model" }, now).agentHead).toEqual(["模型", "TOKEN", "费用"])
 })
 
 test("streak, and the day against the average day before it", () => {

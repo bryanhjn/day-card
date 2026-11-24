@@ -8,7 +8,7 @@
   const theme = await magpie.ready;
   let lang = theme.lang;
   const zone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
-  const state = { date: "", span: "day", day: null, icons: new Map(), loading: 0, drawn: 0, bg: B.norm(null) };
+  const state = { date: "", span: "day", by: "agent", day: null, icons: new Map(), loading: 0, drawn: 0, bg: B.norm(null) };
 
   // ---- words ----
   function words() {
@@ -28,8 +28,18 @@
   const INK = "#1f1d20";
   const MUTED = "#76736e";
   const PAPER = "#f7f4ed";
-  const DASH = "#a8a49c";
   const MONO = '"Day Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", "Hiragino Sans", "Microsoft YaHei", "Noto Sans CJK SC", monospace';
+
+  // The slip's finish, kept in one place to be tuned: the paper's shadow on
+  // the backdrop, the shade the title and the total carry, the rules between
+  // sections, and the grain of the paper. All of it quiet: a printed slip on
+  // a table, not a glowing card.
+  const LOOK = {
+    paper: { blur: 26, offsetY: 8, alpha: 0.55 },
+    ink: { colour: "rgba(31, 29, 32, .1)", blur: 4, offsetY: 1 },
+    rule: { colour: "rgba(168, 164, 156, .55)", width: 0.9, dash: [4, 4], inset: 11 },
+    grain: { alpha: 0.55, tile: 72 },
+  };
 
   // JetBrains Mono from fonts.js's bytes: no fetch, which the frame can't make
   const fonts = (async () => {
@@ -147,9 +157,21 @@
   // ---- the receipt ----
   const PW = 440; // the paper
   const PAD = 30; // the paper's margin; the backdrop's is the reader's (state.bg.pad)
-  const TOOTH = 5; // the torn edge's teeth
+  const TOOTH = 4; // the torn edge's teeth: shallow, a slip parted from its roll
+  const TOOTH_PITCH = 10; // their width: a longer, gentler saw than a deep one
 
   const f = (w, px) => `${w} ${px}px ${MONO}`;
+  // a backdrop's shadow, softened: the paper sits on the ground rather than
+  // hovering over it, so the shade keeps the ground's hue and loses some of
+  // its weight
+  function fade(colour, k) {
+    const m = /^rgba?\(([^)]+)\)$/i.exec(String(colour));
+    if (!m) return colour;
+    const p = m[1].split(",").map((v) => parseFloat(v));
+    if (p.length < 3) return colour;
+    const a = (p.length > 3 ? p[3] : 1) * k;
+    return `rgba(${Math.round(p[0])}, ${Math.round(p[1])}, ${Math.round(p[2])}, ${Math.round(a * 1000) / 1000})`;
+  }
   function fit(ctx, s, width) {
     if (ctx.measureText(s).width <= width) return s;
     let lo = 0, hi = s.length;
@@ -172,6 +194,18 @@
       x += ctx.measureText(ch).width + gap;
     }
   }
+  // text whose words sit closer than a space, centred on cx
+  function tight(ctx, s, cx, y) {
+    const parts = s.split(" ");
+    const gap = ctx.measureText(" ").width * 0.45;
+    const ws = parts.map((p) => ctx.measureText(p).width);
+    let x = cx - (ws.reduce((n, w) => n + w, 0) + gap * (parts.length - 1)) / 2;
+    ctx.textAlign = "left";
+    parts.forEach((p, i) => {
+      ctx.fillText(p, x, y);
+      x += ws[i] + gap;
+    });
+  }
   // the largest size up to px that keeps s within width
   function sized(ctx, weight, px, s, width) {
     ctx.font = f(weight, px);
@@ -189,28 +223,40 @@
     const L = PAD, R = PW - PAD, inner = R - L;
     const rule = (y) => {
       ctx.save();
-      ctx.strokeStyle = DASH;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = LOOK.rule.colour;
+      ctx.lineWidth = LOOK.rule.width;
+      ctx.setLineDash(LOOK.rule.dash);
       ctx.beginPath();
-      ctx.moveTo(L + 11, y + 0.5);
-      ctx.lineTo(R - 11, y + 0.5);
+      ctx.moveTo(L + LOOK.rule.inset, y + 0.5);
+      ctx.lineTo(R - LOOK.rule.inset, y + 0.5);
       ctx.stroke();
       ctx.restore();
     };
-    const row = (label, value, y, o = {}) => {
-      ctx.font = f(o.weight || 400, o.px || 12.5);
-      ctx.fillStyle = o.colour || INK;
+    // a number: right-aligned on the column, on the text baseline, so every
+    // amount in a section ends on the same edge and sits on the same line.
+    // Day Mono's digits are all one width, so a column of amounts is even.
+    const amount = (s, y, weight, px) => {
+      ctx.textBaseline = "alphabetic";
+      ctx.font = f(weight, px);
       ctx.textAlign = "right";
-      ctx.fillText(value, R, y);
-      const vw = ctx.measureText(value).width;
+      ctx.fillText(s, R, y);
+      return ctx.measureText(s).width;
+    };
+    const row = (label, value, y, o = {}) => {
+      ctx.fillStyle = o.colour || INK;
+      const vw = amount(value, y, o.weight || 400, o.px || 12.5);
+      ctx.font = f(o.weight || 400, o.px || 12.5);
       ctx.textAlign = "left";
       ctx.fillText(fit(ctx, label, inner - vw - 14), L, y);
     };
+    // the title and the total: a whisper of shade, enough to lift the ink
+    // from the paper without blurring its edge
     const glow = (on) => {
-      ctx.shadowColor = on ? "rgba(31, 29, 32, .16)" : "transparent";
-      ctx.shadowBlur = on ? 14 : 0;
-      ctx.shadowOffsetY = on ? 3 : 0;
+      const s = LOOK.ink;
+      ctx.shadowColor = on ? s.colour : "transparent";
+      ctx.shadowBlur = on ? s.blur : 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = on ? s.offsetY : 0;
     };
     ctx.textBaseline = "alphabetic";
     let y = 0;
@@ -219,9 +265,8 @@
     y += 54;
     ctx.fillStyle = INK;
     sized(ctx, 800, 30, c.title, inner);
-    ctx.textAlign = "center";
     glow(true);
-    ctx.fillText(c.title, PW / 2, y);
+    tight(ctx, c.title, PW / 2, y);
     glow(false);
 
     // the day, and when this was drawn
@@ -263,18 +308,72 @@
     y += 18;
     rule(y);
 
-    // streak, requests, against an average day
+    // each agent and its models, by cost, with the tokens beside the cost
     y += 25;
-    c.stats.forEach((s, i) => {
-      if (i) y += 21;
-      row(s.label, s.value, y);
-    });
-    y += 15;
-    rule(y);
-
-    // each agent and its models, by cost
-    y += 25;
-    row(c.agentHead[0], c.agentHead[1], y, { colour: MUTED });
+    // TOKEN is a column of its own just left of COST: the widest amount sets
+    // how much room it takes, so both columns line up down the section
+    const weightOf = c.by === "model" ? 400 : 700;
+    const pxOf = c.by === "model" ? 12.5 : 14.5;
+    const widthOf = (s, weight, px) => { ctx.font = f(weight, px); return ctx.measureText(s).width; };
+    let costW = widthOf(c.agentHead[2], 400, 12.5);
+    for (const a of c.agents) {
+      costW = Math.max(costW, widthOf(a.value, weightOf, pxOf));
+      for (const m of a.models) costW = Math.max(costW, widthOf(m.value, 400, 12.5));
+    }
+    const tokenX = R - costW - 20;
+    // count()'s 万 and 亿 are not Day Mono's: the fallback face draws them a
+    // full em tall where the digits are barely half of one, so at the same
+    // size they read bigger than the cost. The unit is set a little smaller,
+    // and lifted, to sit level with the number it ends.
+    const UNIT = /([万亿])$/;
+    const UNIT_SIZE = 0.8;
+    const UNIT_RISE = 0.12;
+    const tokenWidth = (s, px) => {
+      const u = UNIT.exec(s);
+      ctx.font = f(400, px);
+      let w = ctx.measureText(u ? s.slice(0, -1) : s).width;
+      if (u) {
+        ctx.font = f(400, px * UNIT_SIZE);
+        w += ctx.measureText(u[1]).width;
+      }
+      return w;
+    };
+    // the lift is tuned on an agent's bold digits; against regular ones the
+    // same lift reads a little high, so they take most of it, not all
+    const tokenText = (s, right, px, bold) => {
+      const u = UNIT.exec(s);
+      const num = u ? s.slice(0, -1) : s;
+      const x = right - tokenWidth(s, px);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.font = f(400, px);
+      ctx.fillText(num, x, y);
+      if (u) {
+        const nw = ctx.measureText(num).width;
+        ctx.font = f(400, px * UNIT_SIZE);
+        ctx.fillText(u[1], x + nw, y - px * UNIT_RISE * (bold ? 1 : 0.72));
+      }
+    };
+    // a row's two numbers, and its name between the icons and them
+    const entry = (ic, ix, iy, size, name, tokens, value, weight, px, tx) => {
+      drawIcon(ctx, icons.get(ic), ix, iy, size, scale);
+      ctx.fillStyle = INK;
+      amount(value, y, weight, px);
+      // the tokens are the cost's own size, on the same baseline
+      tokenText(tokens, tokenX, px, weight >= 700);
+      const tw = tokenWidth(tokens, px);
+      ctx.font = f(weight, px);
+      ctx.textAlign = "left";
+      ctx.fillText(fit(ctx, name, tokenX - tw - 14 - tx), tx, y);
+    };
+    ctx.fillStyle = MUTED;
+    ctx.font = f(400, 12.5);
+    ctx.textAlign = "right";
+    ctx.fillText(c.agentHead[2], R, y);
+    const headTokens = widthOf(c.agentHead[1], 400, 12.5);
+    ctx.fillText(c.agentHead[1], tokenX, y);
+    ctx.textAlign = "left";
+    ctx.fillText(fit(ctx, c.agentHead[0], tokenX - headTokens - 14 - L), L, y);
     if (c.empty) {
       y += 27;
       ctx.font = f(400, 12.5);
@@ -284,25 +383,17 @@
     }
     for (const a of c.agents) {
       y += 27;
-      drawIcon(ctx, icons.get(a.icon), L, y - 15, 18, scale);
-      ctx.font = f(700, 14.5);
-      ctx.fillStyle = INK;
-      ctx.textAlign = "right";
-      ctx.fillText(a.value, R, y);
-      const vw = ctx.measureText(a.value).width;
-      ctx.textAlign = "left";
-      ctx.fillText(fit(ctx, a.name, inner - 26 - vw - 14), L + 26, y);
+      // grouped by model there is no tree: each row is a model, drawn as the
+      // models under an agent are, not as an agent's own line
+      if (c.by === "model") {
+        entry(a.icon, L + 3, y - 12, 14, a.name, a.tokens, a.value, 400, 12.5, L + 22);
+        continue;
+      }
+      entry(a.icon, L, y - 15, 18, a.name, a.tokens, a.value, 700, 14.5, L + 26);
       y += 1;
       for (const m of a.models) {
         y += 27;
-        drawIcon(ctx, icons.get(m.icon), L + 26, y - 10.5, 12, scale);
-        ctx.font = f(400, 12.5);
-        ctx.fillStyle = INK;
-        ctx.textAlign = "right";
-        ctx.fillText(m.value, R, y);
-        const mw = ctx.measureText(m.value).width;
-        ctx.textAlign = "left";
-        ctx.fillText(fit(ctx, m.name, inner - 44 - mw - 14), L + 44, y);
+        entry(m.icon, L + 26, y - 10.5, 12, m.name, m.tokens, m.value, 400, 12.5, L + 44);
       }
       if (a.more) {
         y += 24;
@@ -323,6 +414,15 @@
     y += 17;
     rule(y);
 
+    // streak, requests, against an average day
+    y += 25;
+    c.stats.forEach((s, i) => {
+      if (i) y += 21;
+      row(s.label, s.value, y);
+    });
+    y += 15;
+    rule(y);
+
     // whose design the receipt follows
     if (c.credit) {
       y += 22;
@@ -335,13 +435,49 @@
     return Math.ceil(y + 4);
   }
 
+  // the paper's grain: one small tile of faint specks and fibres, repeated
+  // over the slip. Built once per scale and kept, so a redraw costs a pattern
+  // rather than a new tile; seeded, so every redraw is the same paper. The
+  // tile is a bitmap at the card's scale, drawn back at the layout's size, so
+  // a speck is a point of the slip at 2× and at 3× alike.
+  const grains = new Map();
+  function grain(scale) {
+    const key = String(scale);
+    if (grains.has(key)) return grains.get(key);
+    const tile = LOOK.grain.tile;
+    const px = Math.round(tile * scale);
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = px;
+    const g = cv.getContext("2d");
+    let seed = 0x9e3779b9;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    // specks, half a shade darker than the paper and half a shade lighter
+    for (let i = 0, n = tile * tile * 0.05; i < n; i++) {
+      const a = 0.02 + rnd() * 0.045;
+      g.fillStyle = rnd() > 0.5 ? `rgba(126, 116, 98, ${a})` : `rgba(255, 255, 255, ${a})`;
+      g.fillRect(Math.floor(rnd() * tile) * scale, Math.floor(rnd() * tile) * scale, scale, scale);
+    }
+    // a few short fibres, the way machine-made paper runs
+    g.lineWidth = scale;
+    for (let i = 0, n = tile * 0.35; i < n; i++) {
+      const x = rnd() * px, y = rnd() * px, len = (2 + rnd() * 5) * scale;
+      g.strokeStyle = `rgba(126, 116, 98, ${0.015 + rnd() * 0.02})`;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + len, y + (rnd() - 0.5) * scale * 0.8);
+      g.stroke();
+    }
+    grains.set(key, cv);
+    return cv;
+  }
+
   async function draw() {
     const day = state.day;
     if (!day) return;
     const n = ++state.drawn;
     const bg = state.bg;
     await fonts;
-    const c = V.card(day, lang, { span: state.span });
+    const c = V.card(day, lang, { span: state.span, by: state.by });
     const icons = new Map();
     const [img] = await Promise.all([
       backdrop(bg),
@@ -374,19 +510,37 @@
     paper.moveTo(0, 0);
     paper.lineTo(PW, 0);
     paper.lineTo(PW, ph - TOOTH);
-    const teeth = Math.round(PW / (TOOTH * 2));
+    const teeth = Math.max(1, Math.round(PW / TOOTH_PITCH));
     const tw = PW / teeth;
     for (let i = teeth - 1; i >= 0; i--) {
       paper.lineTo(i * tw + tw / 2, ph);
       paper.lineTo(i * tw, ph - TOOTH);
     }
     paper.closePath();
-    ctx.shadowColor = none ? "transparent" : B.meta(bg.bg).shadow;
-    ctx.shadowBlur = 36;
-    ctx.shadowOffsetY = 12;
+
+    // the paper's shadow: its own save/restore, so neither the blur nor the
+    // offset is still set when the slip's text is drawn
+    ctx.save();
+    ctx.shadowColor = none ? "transparent" : fade(B.meta(bg.bg).shadow, LOOK.paper.alpha);
+    ctx.shadowBlur = LOOK.paper.blur;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = LOOK.paper.offsetY;
     ctx.fillStyle = PAPER;
     ctx.fill(paper);
-    ctx.shadowColor = "transparent";
+    ctx.restore();
+
+    // the paper's grain, clipped to the torn edge so it stops at the paper.
+    // The tile is a bitmap in device pixels and the slip is drawn in points,
+    // so the pattern is scaled back to one tile pixel a point.
+    ctx.save();
+    ctx.clip(paper);
+    const pat = ctx.createPattern(grain(scale), "repeat");
+    if (pat?.setTransform) pat.setTransform(new DOMMatrix([1 / scale, 0, 0, 1 / scale, 0, 0]));
+    ctx.globalAlpha = LOOK.grain.alpha;
+    ctx.fillStyle = pat;
+    ctx.fillRect(0, 0, PW, ph);
+    ctx.restore();
+
     slip(ctx, c, icons, scale);
     ctx.restore();
     $("copy").disabled = $("save").disabled = !magpie.image;
@@ -454,6 +608,7 @@
       $(id).title = t[key];
     }
     document.querySelectorAll("#spans [data-span]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.span === span)));
+    document.querySelectorAll("#modes [data-by]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.by === state.by)));
   }
 
   // ---- the day menu: the days that had calls, newest first ----
@@ -519,6 +674,13 @@
     state.span = b.dataset.span;
     paintBar();
     load(state.date === state.day?.today ? "" : state.date);
+  });
+  $("modes").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-by]");
+    if (!b || b.dataset.by === state.by) return;
+    state.by = b.dataset.by;
+    paintBar();
+    draw();
   });
 
   // ---- the backdrop: a pattern, a photo from bg/, or the reader's picture ----
