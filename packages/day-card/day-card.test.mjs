@@ -324,21 +324,26 @@ test("no background is the first choice, and the card fits the room it has", () 
 })
 
 test("a saved backdrop is made sound before it is drawn", () => {
-  expect(B.norm(null)).toEqual({ bg: "teal", pad: 76, blur: 0, dim: 0, image: "" })
-  expect(B.norm({ bg: "seigaiha", pad: 500, blur: -3, dim: "40" })).toEqual({ bg: "seigaiha", pad: 160, blur: 0, dim: 40, image: "" })
+  expect(B.norm(null)).toEqual({ bg: "teal", pad: 76, blur: 0, dim: 0, aged: true, image: "" })
+  expect(B.norm({ bg: "seigaiha", pad: 500, blur: -3, dim: "40" })).toEqual({ bg: "seigaiha", pad: 160, blur: 0, dim: 40, aged: true, image: "" })
   expect(B.norm({ bg: "nope", pad: "x" })).toMatchObject({ bg: "teal", pad: 76 })
   // a custom backdrop needs its picture, and only a picture as data:
   expect(B.norm({ bg: "custom" }).bg).toBe("teal")
   expect(B.norm({ bg: "custom", image: "https://example.com/a.jpg" })).toMatchObject({ bg: "teal", image: "" })
-  expect(B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 24 })).toEqual({ bg: "custom", pad: 24, blur: 0, dim: 0, image: "data:image/jpeg;base64,AAAA" })
+  expect(B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 24 })).toEqual({ bg: "custom", pad: 24, blur: 0, dim: 0, aged: true, image: "data:image/jpeg;base64,AAAA" })
   expect(B.meta("custom").photo).toBe(true)
   expect(B.meta("nope").id).toBe("teal")
+})
+
+test("the aged paper is on unless the reader turns it off", () => {
+  expect(B.norm({}).aged).toBe(true)
+  expect(B.norm({ aged: false }).aged).toBe(false)
 })
 
 test("a picture of the reader's own can be removed, and a card drawn on it goes back to teal (netube99 on X)", () => {
   const mine = B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 40, blur: 6 })
   // app.js's dropPicture is pick({ image: "" }): the saved options lose the picture
-  expect(B.norm({ ...mine, image: "" })).toEqual({ bg: "teal", pad: 40, blur: 6, dim: 0, image: "" })
+  expect(B.norm({ ...mine, image: "" })).toEqual({ bg: "teal", pad: 40, blur: 6, dim: 0, aged: true, image: "" })
   // a picture not in use goes, and the backdrop picked stays
   expect(B.norm({ ...mine, bg: "kraft", image: "" })).toMatchObject({ bg: "kraft", image: "" })
   const app = read("app.js")

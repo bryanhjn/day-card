@@ -39,6 +39,7 @@
     ink: { colour: "rgba(31, 29, 32, .1)", blur: 4, offsetY: 1 },
     rule: { colour: "rgba(168, 164, 156, .55)", width: 0.9, dash: [4, 4], inset: 11 },
     grain: { alpha: 0.55, tile: 72 },
+    crease: { light: 0.055, dark: 0.04 },
   };
 
   // JetBrains Mono from fonts.js's bytes: no fetch, which the frame can't make
@@ -435,6 +436,80 @@
     return Math.ceil(y + 4);
   }
 
+  // the paper's creases: a slip is folded to fit a pocket, and the folds stay
+  // in it. Each is a soft band with a lit side and a shaded one, laid under
+  // the ink, so the print still reads first.
+  function creases(ctx, w, h) {
+    const c = LOOK.crease;
+    // the paper is not quite flat: one long, faint shade across it, so the
+    // light seems to fall on a sheet rather than a plane
+    const sheen = ctx.createLinearGradient(0, 0, w * 0.9, h);
+    sheen.addColorStop(0, `rgba(255, 255, 255, ${c.light * 0.7})`);
+    sheen.addColorStop(0.45, "rgba(255, 255, 255, 0)");
+    sheen.addColorStop(0.8, `rgba(58, 50, 40, ${c.dark * 0.8})`);
+    sheen.addColorStop(1, `rgba(58, 50, 40, ${c.dark * 0.3})`);
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, w, h);
+    const band = (vertical, at, span) => {
+      const g = vertical
+        ? ctx.createLinearGradient(at - span / 2, 0, at + span / 2, 0)
+        : ctx.createLinearGradient(0, at - span / 2, 0, at + span / 2);
+      g.addColorStop(0, "rgba(255, 255, 255, 0)");
+      g.addColorStop(0.34, `rgba(255, 255, 255, ${c.light})`);
+      g.addColorStop(0.5, "rgba(0, 0, 0, 0)");
+      g.addColorStop(0.66, `rgba(58, 50, 40, ${c.dark})`);
+      g.addColorStop(1, "rgba(58, 50, 40, 0)");
+      ctx.fillStyle = g;
+      if (vertical) ctx.fillRect(at - span / 2, 0, span, h);
+      else ctx.fillRect(0, at - span / 2, w, span);
+    };
+    // folded in three, the way a slip goes into a wallet, and once across
+    band(true, w * 0.333, 34);
+    band(true, w * 0.667, 30);
+    band(false, h * 0.62, 26);
+
+    // and the small folds a slip picks up in a pocket: short, uneven lines,
+    // each a lit edge with its shade just beside it. Seeded, so every redraw
+    // is the same slip; kept faint, so the print still reads over them.
+    let seed = 0x51ed270b;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const line = (x, y, angle, len, bend) => {
+      const dx = Math.cos(angle) * len, dy = Math.sin(angle) * len;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + dx / 2 - dy * bend, y + dy / 2 + dx * bend, x + dx, y + dy);
+    };
+    ctx.lineCap = "round";
+    for (let i = 0, n = 9; i < n; i++) {
+      const x = w * (0.05 + rnd() * 0.9);
+      const y = h * (0.04 + rnd() * 0.92);
+      const angle = (rnd() < 0.5 ? 1 : -1) * (0.45 + rnd() * 0.95);
+      const len = 30 + rnd() * 80;
+      const bend = (rnd() - 0.5) * 0.3;
+      const wide = 1.5 + rnd() * 1.3;
+      // the lit side first, then the shade a hair below and right of it; both
+      // softened, so a fold reads as a crease rather than a scratch
+      ctx.save();
+      ctx.translate(-0.6, -0.7);
+      ctx.shadowColor = `rgba(255, 255, 255, ${c.light})`;
+      ctx.shadowBlur = wide * 2.2;
+      line(x, y, angle, len, bend);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${c.light * 0.9})`;
+      ctx.lineWidth = wide;
+      ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.translate(0.6, 0.7);
+      ctx.shadowColor = `rgba(58, 50, 40, ${c.dark})`;
+      ctx.shadowBlur = wide * 2.2;
+      line(x, y, angle, len, bend);
+      ctx.strokeStyle = `rgba(58, 50, 40, ${c.dark * 0.8})`;
+      ctx.lineWidth = wide * 0.9;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   // the paper's grain: one small tile of faint specks and fibres, repeated
   // over the slip. Built once per scale and kept, so a redraw costs a pattern
   // rather than a new tile; seeded, so every redraw is the same paper. The
@@ -540,6 +615,15 @@
     ctx.fillStyle = pat;
     ctx.fillRect(0, 0, PW, ph);
     ctx.restore();
+
+    // the folds, inside the torn edge too, and under the ink; the reader can
+    // turn them off and have the slip flat
+    if (bg.aged) {
+      ctx.save();
+      ctx.clip(paper);
+      creases(ctx, PW, ph);
+      ctx.restore();
+    }
 
     slip(ctx, c, icons, scale);
     ctx.restore();
@@ -827,6 +911,7 @@
     $("pad").value = bg.pad;
     $("blur").value = bg.blur;
     $("dim").value = bg.dim;
+    $("aged").checked = bg.aged;
     pop.classList.toggle("photo", B.meta(bg.bg).photo === true);
     pop.classList.toggle("none", bg.bg === "none");
     paintChip();
@@ -880,6 +965,7 @@
     else pick({ bg: b.dataset.bg });
   });
   for (const id of ["pad", "blur", "dim"]) $(id).addEventListener("input", (e) => pick({ [id]: e.target.value }));
+  $("aged").addEventListener("change", (e) => pick({ aged: e.target.checked }));
   document.addEventListener("click", (e) => { if (!e.target.closest(".bgpick")) closePop(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop(); });
 
