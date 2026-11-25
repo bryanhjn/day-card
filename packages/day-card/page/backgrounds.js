@@ -45,8 +45,10 @@
     const image = typeof o.image === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(o.image) ? o.image : "";
     let bg = typeof o.bg === "string" ? o.bg : "teal";
     if (bg === "custom" ? !image : !BY.has(bg)) bg = "teal";
-    // aged: the slip's folds and grain, on unless the reader turns them off
-    return { bg, pad: num(o.pad, PAD), blur: num(o.blur, BLUR), dim: num(o.dim, DIM), aged: o.aged !== false, image };
+    // aged: the slip's folds and grain, on unless the reader turns them off;
+    // logo: the agents' marks, pale, scattered over the slip's head, likewise
+    // on unless turned off
+    return { bg, pad: num(o.pad, PAD), blur: num(o.blur, BLUR), dim: num(o.dim, DIM), aged: o.aged !== false, logo: o.logo !== false, image };
   }
   const meta = (id) => (id === "custom" ? CUSTOM : BY.get(id) || BY.get("teal"));
 

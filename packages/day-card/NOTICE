@@ -5,3 +5,20 @@ https://ampcode.com/press-kit
 The logo is rendered in the receipt's ink without changing its proportions.
 Amp branding belongs to its respective owner and is not covered by this
 package's MIT license.
+
+The watermark marks embedded in page/icons.js (logo-codex, logo-deepseek,
+logo-claude, logo-kilo, logo-grok, logo-vscode) are the agents' own official
+icons, the same files magpie draws beside an agent's name. Each is an
+unmodified shape, filled with the slip's pale grey instead of its brand
+colours:
+
+- Codex: magpie's assets/icons/codex-color.svg (OpenAI's mark, its white tile
+  dropped so the watermark is the mark alone)
+- DeepSeek Harness: magpie's assets/icons/deepseek-color.svg
+- Claude Code: magpie's assets/icons/claudecode-color.svg
+- Kilo Code: magpie's assets/icons/kilocode.svg
+- Grok Build: magpie's assets/icons/xai.svg
+- VS Code: magpie's assets/icons/vscode.svg
+
+Those names and marks belong to their respective owners and are not covered
+by this package's MIT license.

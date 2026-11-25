@@ -13,7 +13,7 @@ magpie 窗口里的一个**页面插件**（`magpie.page`），把一天 / 一�
 
 | 文件 | 作用 |
 | --- | --- |
-| `page/index.html` | 骨架：工具栏（区间 / 分组 / 日期 / 纸张做旧 / 背景 / 复制 / 保存）+ `<canvas id="card">` |
+| `page/index.html` | 骨架：工具栏（区间 / 分组 / 日期 / 做旧 / Logo / 背景 / 复制 / 保存）+ `<canvas id="card">` |
 | `page/app.js` | 全部绘制与交互。约 1300 行，是一个 `(async () => { ... })()` 自执行异步函数：先 `await magpie.ready`，所以它在 `<script defer>` 里运行，不暴露任何全局 |
 | `page/view.js` | 纯计算 + 全部文案（`DayView`）：`card()` 把 `usage:day` 的读数变成绘制用的数据结构；`count/money/hitRate/menuDays/spanFrom/stepDate/...` |
 | `page/backgrounds.js` | 背景（`DayBackgrounds`）：图案、照片、自定义图；`norm()` 归一化已保存选项，`paint()` 绘制 |
@@ -47,10 +47,11 @@ magpie.read("usage:day", {date, tz, from?})
 - 绘制顺序（`draw()`）：
   1. `B.paint()` 背景
   2. 纸 + 阴影（`Path2D paper`，底部锯齿撕边 `TOOTH=4` / `TOOTH_PITCH=10`）
-  3. 纸纹（`grain(scale)`，固定种子，按 scale 缓存）
-  4. 折痕（`creases()`，仅 `bg.aged`）
-  5. **墨层**（独立 canvas）+ 印刷磨损（`press()`，仅 `bg.aged`）
-  6. 用纸的 `Path2D` 裁切墨层，贴到纸上
+  3. **Logo 水印**（`watermark()`，仅 `bg.logo`）——画在纸纹**之前**，所以纸纹和折痕压在它上面，看起来是"纸里的水印"而不是贴上去的贴纸
+  4. 纸纹（`grain(scale)`，固定种子，按 scale 缓存）
+  5. 折痕（`creases()`，仅 `bg.aged`）
+  6. **墨层**（独立 canvas）+ 印刷磨损（`press()`，仅 `bg.aged`）
+  7. 用纸的 `Path2D` 裁切墨层，贴到纸上
 - 墨层独立成 canvas 的原因：磨损用 `destination-out`/像素运算，如果直接画在纸面上会把纸纹和折痕一起啃掉。**这条是设计约束，不要合并回去。**
 
 ### LOOK 调参表
@@ -94,14 +95,32 @@ magpie.read("usage:day", {date, tz, from?})
 - `between([lo,hi])` 只接受**数组**。传数字会抛 `number 0.32 is not iterable`——我踩过一次，页面直接白屏（只有纸，没有字），且因为 `draw()` 是 async，报错落在 unhandledrejection 里。
 - 全部随机数固定种子：同一尺寸下每次重绘是同一张小票。
 
-## `纸张做旧`（aged）开关语义
+## `做旧`（aged）与 `Logo`（logo）两个开关
 
-`backgrounds.norm()` 里 `aged` **默认 true**，只有显式 `false` 才关。它同时控制：
+`backgrounds.norm()` 里 `aged` 与 `logo` **默认都是 true**，只有显式 `false` 才关。
+
+`aged` 同时控制：
 
 1. 折痕（`creases()`）
 2. 热敏印刷磨损（`press()`）
 
 即 `if (bg.aged) press(...)`。关掉 = 平整纸 + 干净打印（"头工作正常"）。这是产品语义，不是实现细节；加新的"做旧"类效果时应当一起挂在这个开关下，除非有理由单独开关。
+
+`logo` 是**独立**开关（2026-11 加）：控制纸上的 Agent 标志水印。之所以独立，是因为它是"装饰"而不是"做旧"——用户可能想要干净的纸但保留水印，或反过来。
+
+- 六个标志：Codex / DeepSeek Harness / Claude Code / Kilo Code / Grok Build / VS Code，全部是 magpie 自己的官方图标（`packages/agent-office/page/icons/*.svg`；VS Code 的取自 magpie 可执行文件内嵌的 `assets/icons/vscode.svg`），以 base64 内联在 `icons.js` 的 `logo-*` 键下，并标 `mono: true`，这样 `drawIcon()` 的 `tint` 参数会把它们整体染成浅灰，而不是保留品牌色。
+- Codex 的官方 SVG 带一块白色圆角底板；作为水印那块底板会印成一个灰方块，所以 `logo-codex` 去掉了那条白色 path，只留标志本体。
+- **DeepSeek 的标志是"定海神针"（`LOOK.watermark.hero`）**：不参与随机散布，固定钉在 `(68, 212)` pt、边长 58pt，也就是总费用左侧的页边、与总费用数字同高。这个位置和尺寸是按用户给的红框（截图里 97×95 px @ scale 1.645）换算到小票坐标定的。
+- **钉住一个标志时，绝不能让其余标志挪位**（踩过，用户退回）：散落位置来自同一个带种子的随机序列，每个标志按顺序取数。第一版实现做了两件"看起来很自然"的事，结果把整个序列往后推了，五个标志全跑位：
+  1. 用 `MARKS.filter(n => n !== hero.name)` 把 DeepSeek 从循环里剔除 → 少跑一轮，后面的取数全部错位；
+  2. 把 hero 的占位 `push` 进 `placed` 数组 → 后面每个标志的避让判定都变了。
+  正确做法：**六个标志照旧全部走循环**，只在"画不画"上分叉——hero 那一轮照常取随机数（连 `turn` 也要取，否则后面的 `rnd()` 又错位），然后 `return` 不画；与 hero 位置冲突的标志**丢弃而不是重新寻位**（重新寻位会消耗额外随机数）。占位检查用独立的 `onHero()`，不要塞进 `clear()`。
+  验证手段：写一个纯 node 脚本，用同一 seed 跑两遍（有/无 hero），逐项比对五个非 hero 标志的 `x, y, s, turn` 是否完全相同。改这块时一定要跑一次。实测加 hero 前后：`codex (99.88, 288.20) / claude (220.32, 113.69) / kilo (229.66, 254.12) / grok (88.68, 393.95) / vscode (308.38, 366.35)` 全部一致。
+- 位置：`watermark()` 用**拒绝采样**（不是网格）：每个标志随机落点，要求与已放置的保持 `gap` 间距，最多试 60 次，放不下就少放一个——所以是"随意分散"而不是排排坐。同时避开 `measured.heavy`（标题与总费用的墨迹框，留 14pt 余量），否则水印会压在数字上显得脏。
+- 尺寸：散布的标志为 `totalPx * 0.72`（约总费用数字的字高）；hero 固定 58pt。
+- 层次：画在纸纹**之下**（见上"绘制顺序"），所以有纸的颗粒感，且 `press()` 的磨损不会啃掉它。
+- 缓存：`watermark(foot, size, scale, icons, avoid)` 按 `foot x size x scale x 标志数 x 重墨框` 缓存成一张 canvas，重绘只花一次 `drawImage`。**重墨框必须进 key**，否则换一天、总费用变宽后会复用按旧框算出的位置。
+- 像素验证：开启时深色像素 52176，关闭 52165——差 11 个（水印是浅灰，几乎不落在"深色"阈值内）。**不能用深色像素数判断水印开关**，要看截图或改阈值。
 
 ## 约定与坑
 

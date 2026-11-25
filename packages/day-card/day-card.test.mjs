@@ -324,13 +324,13 @@ test("no background is the first choice, and the card fits the room it has", () 
 })
 
 test("a saved backdrop is made sound before it is drawn", () => {
-  expect(B.norm(null)).toEqual({ bg: "teal", pad: 76, blur: 0, dim: 0, aged: true, image: "" })
-  expect(B.norm({ bg: "seigaiha", pad: 500, blur: -3, dim: "40" })).toEqual({ bg: "seigaiha", pad: 160, blur: 0, dim: 40, aged: true, image: "" })
+  expect(B.norm(null)).toEqual({ bg: "teal", pad: 76, blur: 0, dim: 0, aged: true, logo: true, image: "" })
+  expect(B.norm({ bg: "seigaiha", pad: 500, blur: -3, dim: "40" })).toEqual({ bg: "seigaiha", pad: 160, blur: 0, dim: 40, aged: true, logo: true, image: "" })
   expect(B.norm({ bg: "nope", pad: "x" })).toMatchObject({ bg: "teal", pad: 76 })
   // a custom backdrop needs its picture, and only a picture as data:
   expect(B.norm({ bg: "custom" }).bg).toBe("teal")
   expect(B.norm({ bg: "custom", image: "https://example.com/a.jpg" })).toMatchObject({ bg: "teal", image: "" })
-  expect(B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 24 })).toEqual({ bg: "custom", pad: 24, blur: 0, dim: 0, aged: true, image: "data:image/jpeg;base64,AAAA" })
+  expect(B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 24 })).toEqual({ bg: "custom", pad: 24, blur: 0, dim: 0, aged: true, logo: true, image: "data:image/jpeg;base64,AAAA" })
   expect(B.meta("custom").photo).toBe(true)
   expect(B.meta("nope").id).toBe("teal")
 })
@@ -338,6 +338,60 @@ test("a saved backdrop is made sound before it is drawn", () => {
 test("the aged paper is on unless the reader turns it off", () => {
   expect(B.norm({}).aged).toBe(true)
   expect(B.norm({ aged: false }).aged).toBe(false)
+})
+
+test("the agents' logos watermark the slip unless the reader turns them off", () => {
+  // on by default, like the aging, and its own switch: either may be off alone
+  expect(B.norm({}).logo).toBe(true)
+  expect(B.norm({ logo: false }).logo).toBe(false)
+  expect(B.norm({ logo: false, aged: true })).toMatchObject({ logo: false, aged: true })
+  expect(B.norm({ logo: true, aged: false })).toMatchObject({ logo: true, aged: false })
+  // the switch is in the toolbar beside the aging's, and wired to a redraw
+  const html = read("index.html")
+  expect(html).toContain('id="logo"')
+  expect(html.indexOf('id="aged"')).toBeLessThan(html.indexOf('id="logo"'))
+  const app = read("app.js")
+  expect(app).toContain('$("logo").checked = bg.logo')
+  expect(app).toContain('$("logo").addEventListener("change", (e) => pick({ logo: e.target.checked }))')
+  // the marks are drawn on the paper, under the print, only when it is on
+  expect(app).toMatch(/if \(bg\.logo\) \{/)
+  expect(app).toContain("watermark(measured.headFoot, measured.totalPx * 0.72, scale, icons, measured.heavy)")
+})
+
+test("DeepSeek's mark is pinned in the left margin beside the total, larger than the rest", () => {
+  const app = read("app.js")
+  // the hero is placed, not scattered: its spot and size are the LOOK's own
+  expect(app).toMatch(/hero: \{ name: "logo-deepseek", x: 68, y: 212, size: 58 \}/)
+  // it is drawn upright, on the mark's own centre, at its own size
+  expect(app).toContain("drawIcon(g, icons.get(hero.name), -hero.size / 2, -hero.size / 2, hero.size, scale, w.colour)")
+  // pinning it must not shift the other five: all six still walk the same
+  // sequence (no mark is filtered out of the loop, no reservation is folded
+  // into clear()), and its turn of the random sequence is taken even when it
+  // is not drawn from there
+  expect(app).toContain("const marks = MARKS.filter((n) => icons.get(n));")
+  expect(app).not.toContain("n !== w.hero.name")
+  expect(app).not.toContain("if (hero) placed.push(")
+  expect(app).toContain("const turn = (rnd() - 0.5) * 2 * w.tilt;")
+  expect(app).toContain("if (name === w.hero.name || onHero(x, y, s)) return;")
+})
+
+test("the watermark's marks are the agents' own official logos, with their own file", () => {
+  // the six the slip scatters, and each one's bytes in icons.js: no drawing,
+  // no invented mark
+  const marks = ["logo-codex", "logo-deepseek", "logo-claude", "logo-kilo", "logo-grok", "logo-vscode"]
+  for (const name of marks) {
+    const ic = scope.DayIcons[name]
+    expect([name, typeof ic?.src]).toEqual([name, "string"])
+    expect(ic.src).toStartWith("data:image/svg+xml;base64,")
+    const svg = Buffer.from(ic.src.split(",")[1], "base64").toString("utf8")
+    expect(svg).toContain("<path ")
+    expect(svg).not.toMatch(/<(?:script|image|foreignObject)\b/)
+    // a mark is filled with the watermark's own grey, so it must be one shape
+    expect(ic.mono).toBe(true)
+  }
+  // the app draws them pale: its own grey, not the brand colours
+  expect(read("app.js")).toContain("const MARKS = [")
+  expect(read("app.js")).toContain("watermark: {")
 })
 
 test("the aged paper prints its ink worn, and a flat slip prints clean", () => {
@@ -359,7 +413,7 @@ test("the aged paper prints its ink worn, and a flat slip prints clean", () => {
 test("a picture of the reader's own can be removed, and a card drawn on it goes back to teal (netube99 on X)", () => {
   const mine = B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 40, blur: 6 })
   // app.js's dropPicture is pick({ image: "" }): the saved options lose the picture
-  expect(B.norm({ ...mine, image: "" })).toEqual({ bg: "teal", pad: 40, blur: 6, dim: 0, aged: true, image: "" })
+  expect(B.norm({ ...mine, image: "" })).toEqual({ bg: "teal", pad: 40, blur: 6, dim: 0, aged: true, logo: true, image: "" })
   // a picture not in use goes, and the backdrop picked stays
   expect(B.norm({ ...mine, bg: "kraft", image: "" })).toMatchObject({ bg: "kraft", image: "" })
   const app = read("app.js")

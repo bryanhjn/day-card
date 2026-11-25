@@ -63,6 +63,25 @@
       grain: 0.34, // the grain at the type's edges
       pinhole: 0.55, // the noise above which an element starved a point
     },
+    // the agents' marks, as a watermark over the slip's head: pale grey, a
+    // little rotated, scattered so the top of the slip reads as a child's
+    // sheet of stickers rather than a row. A mark's side follows the total's
+    // type (about the height of its digits), so it stays in proportion however
+    // long the slip is; the alpha is what keeps it behind the print.
+    // `hero` is the one mark that does not scatter: DeepSeek's, pinned in the
+    // paper's left margin beside the total and set larger than the rest, so
+    // the slip carries one clear mark as well as its litter.
+    watermark: {
+      alpha: 0.13,
+      colour: "rgba(31, 29, 32, 1)",
+      tilt: 0.45,
+      top: 18,
+      gap: 0.55,
+      // DeepSeek's whale spans the full width of the square it is drawn on and
+      // about three quarters of its height, so a square of the box's own 58pt
+      // leaves the whale 58pt across, centred in the box.
+      hero: { name: "logo-deepseek", x: 68, y: 212, size: 58 },
+    },
   };
 
   // JetBrains Mono from fonts.js's bytes: no fetch, which the frame can't make
@@ -101,9 +120,12 @@
   // paper's, and what is clear around it stays clear. A tile with no light
   // ground (an app icon, an illustration like Cindy's) prints in greys from
   // its own darkest to its lightest, so it doesn't fill in as a block.
-  function drawIcon(ctx, ic, x, y, size, scale) {
+  // `tint` is the colour a mark is filled with; the watermark passes a pale
+  // grey, the rows the ink.
+  function drawIcon(ctx, ic, x, y, size, scale, tint) {
+    const colour = tint || INK;
     if (!ic) {
-      ctx.fillStyle = INK;
+      ctx.fillStyle = colour;
       ctx.beginPath();
       ctx.arc(x + size / 2, y + size / 2, size * 0.22, 0, Math.PI * 2);
       ctx.fill();
@@ -172,7 +194,7 @@
     }
     if (clear) {
       o.globalCompositeOperation = "source-in";
-      o.fillStyle = INK;
+      o.fillStyle = colour;
       o.fillRect(0, 0, px, px);
     }
     ctx.drawImage(off, x, y, size, size);
@@ -241,8 +263,103 @@
     return px;
   }
 
+  // The marks that watermark the slip's head, in the order they scatter: the
+  // same six agents magpie draws beside an agent's own name.
+  const MARKS = ["logo-codex", "logo-deepseek", "logo-claude", "logo-kilo", "logo-grok", "logo-vscode"];
+
+  // The agents' marks over the slip's head, pale grey and scattered as a child
+  // sticks stickers on a sheet: the watermark the reader can turn off. They lie
+  // under the print, and each is turned a little, so the head reads as lively
+  // rather than as another table. `foot` is how far down the slip they may go
+  // (the head's own foot, above the agents' table); `size` is one mark's side,
+  // the height of the total's digits; `avoid` is where the slip's heaviest type
+  // sits, which the marks keep clear of so the title and the total read first.
+  // DeepSeek's mark is the exception: it is pinned where `hero` puts it, in the
+  // paper's left margin, larger than the rest — but it still walks the same
+  // scattered sequence, so pinning it moves no other mark.
+  // Drawn once for a slip of this size and kept: a redraw costs one drawImage.
+  // Seeded, so every redraw is the same slip.
+  const watermarks = new Map();
+  function watermark(foot, size, scale, icons, avoid) {
+    const w = LOOK.watermark;
+    const marks = MARKS.filter((n) => icons.get(n));
+    const hero = icons.get(w.hero.name) ? w.hero : null;
+    if (!marks.length) return null;
+    // the heavy type is part of the key: a slip whose total is wider must not
+    // reuse the marks placed around a narrower one
+    const heavy = avoid.map((b) => `${Math.round(b.x)},${Math.round(b.y)},${Math.round(b.w)}`).join(";");
+    const key = `${Math.round(foot)}x${Math.round(size * 10)}x${scale}x${marks.length}x${heavy}`;
+    if (watermarks.has(key)) return watermarks.get(key);
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(PW * scale));
+    cv.height = Math.max(1, Math.round(foot * scale));
+    const g = cv.getContext("2d");
+    g.setTransform(scale, 0, 0, scale, 0, 0);
+    let seed = 0x2f9a1c57;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const L = PAD, R = PW - PAD;
+    // Scattered, not gridded: a mark lands where it likes, as long as it keeps
+    // its own room and stays off the heavy type. Every one of the six walks the
+    // sequence in the same order, so the layout never shifts underneath a mark.
+    const top = w.top, band = foot - top - size * 0.4;
+    const placed = [];
+    // a mark keeps clear of the heavy type by a comfortable margin, so a
+    // sticker never sits on the title or the total
+    const keep = 14;
+    const clear = (x, y, s) => {
+      const r = s / 2;
+      for (const b of avoid) {
+        if (x + r > b.x - keep && x - r < b.x + b.w + keep && y + r > b.y - keep && y - r < b.y + b.h + keep) return false;
+      }
+      return placed.every((p) => {
+        const dx = Math.abs(p.x - x), dy = Math.abs(p.y - y);
+        return dx > (p.s + s) * w.gap || dy > (p.s + s) * w.gap;
+      });
+    };
+    // whether a mark would sit on the hero's square. It is asked after the spot
+    // is drawn from the sequence, never folded into `clear`: a reservation
+    // there would move every mark that comes after it.
+    const onHero = (x, y, s) => {
+      if (!hero) return false;
+      const r = (s + hero.size) / 2 + 4;
+      return Math.abs(x - hero.x) < r && Math.abs(y - hero.y) < r;
+    };
+    g.globalAlpha = w.alpha;
+    marks.forEach((name) => {
+      const s = size * (0.8 + rnd() * 0.4);
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 60 && !ok; tries++) {
+        x = L + s / 2 + rnd() * Math.max(1, R - L - s);
+        y = top + s / 2 + rnd() * Math.max(1, band - s);
+        ok = clear(x, y, s);
+      }
+      if (!ok) return; // nowhere left to put it: the head keeps one mark fewer
+      placed.push({ x, y, s });
+      // its turn is taken even when the mark is not drawn, so the sequence the
+      // marks after it draw from stays the same
+      const turn = (rnd() - 0.5) * 2 * w.tilt;
+      // DeepSeek's mark goes to the margin instead, and a mark that would land
+      // on the hero's square is dropped rather than moved
+      if (name === w.hero.name || onHero(x, y, s)) return;
+      g.save();
+      g.translate(x, y);
+      g.rotate(turn);
+      drawIcon(g, icons.get(name), -s / 2, -s / 2, s, scale, w.colour);
+      g.restore();
+    });
+    // the hero, upright: a mark set in the margin rather than stuck on
+    if (hero) {
+      g.save();
+      g.translate(hero.x, hero.y);
+      drawIcon(g, icons.get(hero.name), -hero.size / 2, -hero.size / 2, hero.size, scale, w.colour);
+      g.restore();
+    }    watermarks.set(key, cv);
+    return cv;
+  }
+
   // The slip's text, top to bottom, on the paper at (0, 0): the height it
-  // took, and where its heaviest type sits, which the head's wear wears most.
+  // took, where its heaviest type sits (which the head's wear wears most), and
+  // where the head ends, which is the band the agents' watermark fills.
   // Run once on a scratch canvas to measure, then on the ink's own sheet.
   function slip(ctx, c, icons, scale) {
     const L = PAD, R = PW - PAD, inner = R - L;
@@ -340,6 +457,9 @@
     }
     y += 18;
     rule(y);
+
+    // the head ends here: the agents' marks fill the slip above this rule
+    const headFoot = y;
 
     // each agent and its models, by cost, with the tokens beside the cost
     y += 25;
@@ -465,7 +585,7 @@
       ctx.fillText(c.credit, PW / 2, y);
       y += 18;
     }
-    return { h: Math.ceil(y + 4), heavy };
+    return { h: Math.ceil(y + 4), heavy, headFoot, totalPx };
   }
 
   // The head's own faults, over the ink alone: a slip comes off a thermal
@@ -811,9 +931,11 @@
     await fonts;
     const c = V.card(day, lang, { span: state.span, by: state.by });
     const icons = new Map();
+    // the rows' marks, and the six the watermark scatters over the head
+    const wanted = [...new Set([...MARKS, ...c.agents.flatMap((a) => [a.icon, ...a.models.map((m) => m.icon)])])];
     const [img] = await Promise.all([
       backdrop(bg),
-      ...[...new Set(c.agents.flatMap((a) => [a.icon, ...a.models.map((m) => m.icon)]))].map(async (n) => icons.set(n, await picture(n))),
+      ...wanted.map(async (n) => icons.set(n, await picture(n))),
     ]);
     if (state.day !== day || n !== state.drawn) return;
     const scale = Math.max(2, Math.min(3, Math.ceil(window.devicePixelRatio || 1)));
@@ -867,6 +989,16 @@
     // so the pattern is scaled back to one tile pixel a point.
     ctx.save();
     ctx.clip(paper);
+
+    // the agents' marks, pale grey, scattered over the slip's head: a
+    // watermark in the paper itself, laid under its grain and its folds and
+    // under the print, so the type reads first and neither the folds nor the
+    // wear of the head ever take it away. The reader can turn it off.
+    if (bg.logo) {
+      const marks = watermark(measured.headFoot, measured.totalPx * 0.72, scale, icons, measured.heavy);
+      if (marks) ctx.drawImage(marks, 0, 0, PW, measured.headFoot);
+    }
+
     const pat = ctx.createPattern(grain(scale), "repeat");
     if (pat?.setTransform) pat.setTransform(new DOMMatrix([1 / scale, 0, 0, 1 / scale, 0, 0]));
     ctx.globalAlpha = LOOK.grain.alpha;
@@ -1184,6 +1316,7 @@
     $("blur").value = bg.blur;
     $("dim").value = bg.dim;
     $("aged").checked = bg.aged;
+    $("logo").checked = bg.logo;
     pop.classList.toggle("photo", B.meta(bg.bg).photo === true);
     pop.classList.toggle("none", bg.bg === "none");
     paintChip();
@@ -1238,6 +1371,7 @@
   });
   for (const id of ["pad", "blur", "dim"]) $(id).addEventListener("input", (e) => pick({ [id]: e.target.value }));
   $("aged").addEventListener("change", (e) => pick({ aged: e.target.checked }));
+  $("logo").addEventListener("change", (e) => pick({ logo: e.target.checked }));
   document.addEventListener("click", (e) => { if (!e.target.closest(".bgpick")) closePop(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop(); });
 
