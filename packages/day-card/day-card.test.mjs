@@ -340,6 +340,22 @@ test("the aged paper is on unless the reader turns it off", () => {
   expect(B.norm({ aged: false }).aged).toBe(false)
 })
 
+test("the aged paper prints its ink worn, and a flat slip prints clean", () => {
+  const app = read("app.js")
+  // the ink is drawn on a sheet of its own, and the head's wear is taken off
+  // that sheet, so a fault never touches the paper's grain or its folds
+  expect(app).toContain("const sheet = document.createElement(\"canvas\")")
+  expect(app).toContain("slip(ink, c, icons, scale)")
+  // the wear follows the aged switch: off is a head running well, a clean slip
+  expect(app).toMatch(/if \(bg\.aged\) press\(ink, PW, ph, drawn\.heavy, scale\);/)
+  // and the wear is seeded, so a redraw is the same slip
+  expect(app).toContain("let seed = 0x6b43a9d1")
+  expect(app).toContain("let seed = 0x2545f491")
+  // the heaviest type is where the head starves most: the title and the total
+  expect(app).toContain("heavyAt(c.title, PW / 2, y, titlePx)")
+  expect(app).toContain("heavyAt(c.total, PW / 2, y, totalPx)")
+})
+
 test("a picture of the reader's own can be removed, and a card drawn on it goes back to teal (netube99 on X)", () => {
   const mine = B.norm({ bg: "custom", image: "data:image/jpeg;base64,AAAA", pad: 40, blur: 6 })
   // app.js's dropPicture is pick({ image: "" }): the saved options lose the picture

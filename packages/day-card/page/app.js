@@ -39,7 +39,30 @@
     ink: { colour: "rgba(31, 29, 32, .1)", blur: 4, offsetY: 1 },
     rule: { colour: "rgba(168, 164, 156, .55)", width: 0.9, dash: [4, 4], inset: 11 },
     grain: { alpha: 0.55, tile: 72 },
-    crease: { light: 0.055, dark: 0.04 },
+    // a fold is lit on one side and shaded on the other. Most of its weight is
+    // in the light: paper catches the light where it bends, while a heavy shade
+    // is what would read as grime, so the shade stays soft and under it.
+    crease: { light: 0.09, dark: 0.062 },
+    // the head that printed it: a slip comes off a thermal head, and the head
+    // is never even. Its feed leaves lines across the slip, some of its
+    // elements run cooler than their neighbours, the coating takes the heat in
+    // patches, it stalls for a line now and then, and where the type is
+    // heaviest it starves. Every fault leaves ink off, so the paper shows
+    // through. A fault's depth is the least and most of the ink it may take.
+    press: {
+      bands: 0.07, // the head's feed lines, a hair apart
+      bandGap: 3.2,
+      bandThick: 0.5,
+      columns: { count: 6, depth: [0.12, 0.34], width: [1.5, 5] },
+      patches: { count: 6, depth: [0.1, 0.26], radius: [70, 180] },
+      stalls: { count: 3, depth: [0.14, 0.3], thick: [0.6, 1.2] },
+      starve: { depth: 0.22 }, // the heaviest type: a row it stalled on
+      mottle: { count: 16, radius: [3, 11], depth: [0.14, 0.46] },
+      breaks: 14,
+      hold: 0.78, // how much of its ink a cold element leaves off
+      grain: 0.34, // the grain at the type's edges
+      pinhole: 0.55, // the noise above which an element starved a point
+    },
   };
 
   // JetBrains Mono from fonts.js's bytes: no fetch, which the frame can't make
@@ -218,10 +241,17 @@
     return px;
   }
 
-  // The slip's text, top to bottom, on the paper at (0, 0); the height it
-  // took. Run once on a scratch canvas to measure, then on the card.
+  // The slip's text, top to bottom, on the paper at (0, 0): the height it
+  // took, and where its heaviest type sits, which the head's wear wears most.
+  // Run once on a scratch canvas to measure, then on the ink's own sheet.
   function slip(ctx, c, icons, scale) {
     const L = PAD, R = PW - PAD, inner = R - L;
+    // where the heaviest type sits: the head wears it most (press)
+    const heavy = [];
+    const heavyAt = (s, cx, y, px) => {
+      const w = Math.min(inner, ctx.measureText(s).width);
+      heavy.push({ x: cx - w / 2, y: y - px * 0.84, w, h: px * 1.02 });
+    };
     const rule = (y) => {
       ctx.save();
       ctx.strokeStyle = LOOK.rule.colour;
@@ -265,10 +295,11 @@
     // title
     y += 54;
     ctx.fillStyle = INK;
-    sized(ctx, 800, 30, c.title, inner);
+    const titlePx = sized(ctx, 800, 30, c.title, inner);
     glow(true);
     tight(ctx, c.title, PW / 2, y);
     glow(false);
+    heavyAt(c.title, PW / 2, y, titlePx);
 
     // the day, and when this was drawn
     y += 34;
@@ -285,11 +316,12 @@
     ctx.font = f(400, 12.5);
     spaced(ctx, c.totalLabel, PW / 2, y, 3.2, inner);
     y += 57;
-    sized(ctx, 800, 52, c.total, inner);
+    const totalPx = sized(ctx, 800, 52, c.total, inner);
     ctx.textAlign = "center";
     glow(true);
     ctx.fillText(c.total, PW / 2, y);
     glow(false);
+    heavyAt(c.total, PW / 2, y, totalPx);
     y += 23;
     sized(ctx, 400, 10.5, c.totalNote, inner);
     spaced(ctx, c.totalNote, PW / 2, y, 1.6, inner);
@@ -433,7 +465,228 @@
       ctx.fillText(c.credit, PW / 2, y);
       y += 18;
     }
-    return Math.ceil(y + 4);
+    return { h: Math.ceil(y + 4), heavy };
+  }
+
+  // The head's own faults, over the ink alone: a slip comes off a thermal
+  // head, and the head is never even. Its feed leaves lines across the slip,
+  // some of its elements run cooler than their neighbours, the coating takes
+  // the heat in patches, it stalls for a line now and then, and where the type
+  // is heaviest — the title, the total — it starves, so their middles print
+  // mottled and their strokes come out in places. The slip's ink is drawn on a
+  // sheet of its own and worn here, so a fault leaves the paper bare and never
+  // touches the paper's grain or its folds. Seeded, so every redraw is the same
+  // slip; quiet enough that the slip still reads first.
+  function press(ink, w, h, heavy, scale) {
+    const p = LOOK.press;
+    const px = Math.max(1, Math.round(w * scale)), py = Math.max(1, Math.round(h * scale));
+
+    // the faults a thermal head has always, and this slip's own: base() is kept
+    // and drawn from, never written to, so a redraw starts from the same wear
+    const mask = document.createElement("canvas");
+    mask.width = px;
+    mask.height = py;
+    const g = mask.getContext("2d");
+    g.drawImage(base(w, h, scale), 0, 0);
+    g.setTransform(scale, 0, 0, scale, 0, 0);
+
+    let seed = 0x6b43a9d1;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const between = ([lo, hi]) => lo + rnd() * (hi - lo);
+    const black = (a) => `rgba(0, 0, 0, ${Math.max(0, Math.min(1, a))})`;
+
+    // where the type is heaviest the head starves. Its middles print mottled:
+    // soft pale blotches, the size of a few elements, laid over the strokes.
+    for (const b of heavy) {
+      for (let i = 0, n = p.mottle.count; i < n; i++) {
+        const cx = b.x + rnd() * b.w, cy = b.y + rnd() * b.h;
+        const r = between(p.mottle.radius);
+        const a = between(p.mottle.depth);
+        const rad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        rad.addColorStop(0, black(a));
+        rad.addColorStop(0.55, black(a * 0.45));
+        rad.addColorStop(1, black(0));
+        g.fillStyle = rad;
+        g.fillRect(cx - r, cy - r, r * 2, r * 2);
+      }
+      // its strokes come out in places: short pale runs along a row, not all
+      // at once, so a break reads as a starved element rather than a crack
+      for (let i = 0, n = p.breaks; i < n; i++) {
+        const y = b.y + rnd() * b.h;
+        const x = b.x + rnd() * b.w;
+        g.fillStyle = black(between([0.25, 0.6]));
+        g.fillRect(x, y, 3 + rnd() * 22, 0.3 + rnd() * 0.5);
+      }
+      // a row the head stalled on, faint, right across it
+      if (rnd() < 0.85) {
+        const y = b.y + b.h * (0.25 + rnd() * 0.5);
+        const grad = g.createLinearGradient(b.x, 0, b.x + b.w, 0);
+        grad.addColorStop(0, black(0));
+        grad.addColorStop(0.18, black(p.starve.depth * 0.75));
+        grad.addColorStop(0.82, black(p.starve.depth * 0.75));
+        grad.addColorStop(1, black(0));
+        g.fillStyle = grad;
+        g.fillRect(b.x, y, b.w, 0.5 + rnd() * 0.7);
+      }
+      // and a column of theirs that ran cool, as wide as a stroke
+      const cx = b.x + b.w * (0.12 + rnd() * 0.76);
+      const wide = 0.5 + rnd() * 1.4;
+      const col = g.createLinearGradient(cx - wide, 0, cx + wide, 0);
+      col.addColorStop(0, black(0));
+      col.addColorStop(0.5, black(between([0.14, 0.3])));
+      col.addColorStop(1, black(0));
+      g.fillStyle = col;
+      g.fillRect(cx - wide, b.y, wide * 2, b.h);
+    }
+
+    // the ink and the wear, pixel by pixel: the head's density takes the ink
+    // down, and a little grain breaks the type's edges, where a thermal
+    // element either fired or did not. A solid stroke keeps most of its
+    // density; an antialiased edge is where the grain shows, and the odd point
+    // of the heaviest type comes out bare, the element starved there.
+    const art = ink.getImageData(0, 0, px, py);
+    const wear = mask.getContext("2d").getImageData(0, 0, px, py);
+    const a = art.data, m = wear.data;
+    const noise = inkGrain(px, py, scale);
+    for (let y = 0, i = 0, n = 0; y < py; y++) {
+      for (let x = 0; x < px; x++, i += 4) {
+        const alpha = a[i + 3];
+        if (!alpha) { n++; continue; }
+        // the head's density here: 0 is a good element, 1 a cold one
+        const density = 1 - (m[i + 3] / 255) * p.hold;
+        const t = alpha / 255;
+        // solid ink keeps its density; a soft edge is where grain shows
+        const edge = 0.45 + 0.55 * (1 - t);
+        let v = alpha * density + noise[n] * 255 * edge * p.grain;
+        // a starved point: the element left the paper bare, and the bolder the
+        // type the likelier it is, as a heavy stroke needs more of its heat
+        if (noise[n] > p.pinhole && t > 0.55) v *= 0.12;
+        n++;
+        a[i + 3] = Math.max(0, Math.min(255, Math.round(v)));
+      }
+    }
+    ink.putImageData(art, 0, 0);
+  }
+
+  // The ink's grain, one value a pixel: fine, and in patches, as the coating
+  // takes the heat, and long along the row where a thermal element's heat is
+  // even along its width and uneven from row to row. Built once per size and
+  // kept; seeded, so every redraw is the same slip.
+  const inkGrains = new Map();
+  function inkGrain(px, py, scale) {
+    const key = `${px}x${py}`;
+    if (inkGrains.has(key)) return inkGrains.get(key);
+    // a number from two coordinates, the same every time
+    const hash = (x, y) => {
+      let v = Math.imul(x + 1, 374761393) + Math.imul(y + 1, 668265263);
+      v = Math.imul(v ^ (v >>> 13), 1274126177);
+      return ((v ^ (v >>> 16)) >>> 0) / 4294967296;
+    };
+    // smooth noise, bilinear over a lattice of stepX by stepY pixels
+    const lattice = (x, y, stepX, stepY) => {
+      const fx = x / stepX, fy = y / stepY;
+      const ix = Math.floor(fx), iy = Math.floor(fy);
+      const tx = fx - ix, ty = fy - iy;
+      const v = (i, j) => hash(i, j);
+      const top = v(ix, iy) + (v(ix + 1, iy) - v(ix, iy)) * tx;
+      const bot = v(ix, iy + 1) + (v(ix + 1, iy + 1) - v(ix, iy + 1)) * tx;
+      return top + (bot - top) * ty;
+    };
+    const fine = Math.max(2, Math.round(scale * 1.4));
+    const row = Math.max(2, Math.round(scale * 6));
+    const out = new Float32Array(px * py);
+    for (let y = 0, n = 0; y < py; y++) {
+      for (let x = 0; x < px; x++) {
+        out[n++] = (hash(x, y) - 0.5) * 0.4
+          + (lattice(x, y, fine, fine) - 0.5) * 0.4
+          + (lattice(x, y, fine, row) - 0.5) * 0.6;
+      }
+    }
+    inkGrains.set(key, out);
+    return out;
+  }
+
+  // the head's even faults, drawn once for a slip of this size and kept: its
+  // feed lines, the elements that run cooler than their neighbours, the
+  // coating's patches, and the lines it stalled on. Seeded, so every redraw is
+  // the same slip.
+  const bases = new Map();
+  function base(w, h, scale) {
+    const key = `${w}x${h}x${scale}`;
+    if (bases.has(key)) return bases.get(key);
+    const p = LOOK.press;
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(w * scale));
+    cv.height = Math.max(1, Math.round(h * scale));
+    const g = cv.getContext("2d");
+    g.setTransform(scale, 0, 0, scale, 0, 0);
+    let seed = 0x2545f491;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const between = ([lo, hi]) => lo + rnd() * (hi - lo);
+    const black = (a) => `rgba(0, 0, 0, ${Math.max(0, Math.min(1, a))})`;
+
+    // the head's feed: its lines, a hair apart, a shade pale
+    g.fillStyle = black(p.bands);
+    for (let y = 0; y < h; y += p.bandGap) g.fillRect(0, y, w, p.bandThick);
+
+    // a stall: a line of the head that came out pale, across part of the slip,
+    // recovering at both ends
+    for (let i = 0, n = p.stalls.count; i < n; i++) {
+      const y = 20 + rnd() * Math.max(1, h - 40);
+      const from = rnd() * w * 0.5;
+      const to = Math.min(w, from + w * (0.3 + rnd() * 0.6));
+      const a = between(p.stalls.depth);
+      const grad = g.createLinearGradient(from, 0, to, 0);
+      grad.addColorStop(0, black(0));
+      grad.addColorStop(0.18, black(a));
+      grad.addColorStop(0.82, black(a));
+      grad.addColorStop(1, black(0));
+      g.fillStyle = grad;
+      g.fillRect(from, y, to - from, between(p.stalls.thick));
+    }
+
+    // an element cooler than the rest: a pale column down the whole slip
+    for (let i = 0, n = p.columns.count; i < n; i++) {
+      const cx = rnd() * w;
+      const wide = between(p.columns.width);
+      const a = between(p.columns.depth);
+      const grad = g.createLinearGradient(cx - wide, 0, cx + wide, 0);
+      grad.addColorStop(0, black(0));
+      grad.addColorStop(0.5, black(a));
+      grad.addColorStop(1, black(0));
+      g.fillStyle = grad;
+      g.fillRect(cx - wide, 0, wide * 2, h);
+    }
+
+    // the coating: broad patches that take the heat less, soft at their edges
+    for (let i = 0, n = p.patches.count; i < n; i++) {
+      const cx = rnd() * w, cy = rnd() * h;
+      const r = between(p.patches.radius);
+      const a = between(p.patches.depth);
+      g.save();
+      g.translate(cx, cy);
+      g.rotate(rnd() * Math.PI);
+      g.scale(0.7 + rnd() * 0.7, 1);
+      const rad = g.createRadialGradient(0, 0, 0, 0, 0, r);
+      rad.addColorStop(0, black(a));
+      rad.addColorStop(0.55, black(a * 0.35));
+      rad.addColorStop(1, black(0));
+      g.fillStyle = rad;
+      g.beginPath();
+      g.arc(0, 0, r, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+    }
+
+    // the slip's right edge runs a shade pale, where the head is coldest
+    const edge = g.createLinearGradient(w * 0.86, 0, w, 0);
+    edge.addColorStop(0, black(0));
+    edge.addColorStop(1, black(0.1));
+    g.fillStyle = edge;
+    g.fillRect(w * 0.86, 0, w * 0.14, h);
+
+    bases.set(key, cv);
+    return cv;
   }
 
   // the paper's creases: a slip is folded to fit a pocket, and the folds stay
@@ -470,7 +723,9 @@
 
     // and the small folds a slip picks up in a pocket: short, uneven lines,
     // each a lit edge with its shade just beside it. Seeded, so every redraw
-    // is the same slip; kept faint, so the print still reads over them.
+    // is the same slip; kept faint, so the print still reads over them. The
+    // shade stays lighter than the lit edge, so more of them reads as paper
+    // bent rather than as grime.
     let seed = 0x51ed270b;
     const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
     const line = (x, y, angle, len, bend) => {
@@ -480,31 +735,33 @@
       ctx.quadraticCurveTo(x + dx / 2 - dy * bend, y + dy / 2 + dx * bend, x + dx, y + dy);
     };
     ctx.lineCap = "round";
-    for (let i = 0, n = 9; i < n; i++) {
+    for (let i = 0, n = 14; i < n; i++) {
       const x = w * (0.05 + rnd() * 0.9);
       const y = h * (0.04 + rnd() * 0.92);
       const angle = (rnd() < 0.5 ? 1 : -1) * (0.45 + rnd() * 0.95);
-      const len = 30 + rnd() * 80;
+      const len = 34 + rnd() * 86;
       const bend = (rnd() - 0.5) * 0.3;
-      const wide = 1.5 + rnd() * 1.3;
+      const wide = 1.7 + rnd() * 1.5;
       // the lit side first, then the shade a hair below and right of it; both
-      // softened, so a fold reads as a crease rather than a scratch
+      // softened, so a fold reads as a crease rather than a scratch. The shade
+      // is drawn thinner and paler than the light, so more folds deepen the
+      // paper's bend without ever gathering into a dirty smudge.
       ctx.save();
-      ctx.translate(-0.6, -0.7);
-      ctx.shadowColor = `rgba(255, 255, 255, ${c.light})`;
-      ctx.shadowBlur = wide * 2.2;
+      ctx.translate(-0.7, -0.8);
+      ctx.shadowColor = `rgba(255, 255, 255, ${c.light * 1.05})`;
+      ctx.shadowBlur = wide * 2.4;
       line(x, y, angle, len, bend);
-      ctx.strokeStyle = `rgba(255, 255, 255, ${c.light * 0.9})`;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${c.light})`;
       ctx.lineWidth = wide;
       ctx.stroke();
       ctx.restore();
       ctx.save();
-      ctx.translate(0.6, 0.7);
-      ctx.shadowColor = `rgba(58, 50, 40, ${c.dark})`;
-      ctx.shadowBlur = wide * 2.2;
+      ctx.translate(0.7, 0.8);
+      ctx.shadowColor = `rgba(58, 50, 40, ${c.dark * 0.8})`;
+      ctx.shadowBlur = wide * 2.4;
       line(x, y, angle, len, bend);
-      ctx.strokeStyle = `rgba(58, 50, 40, ${c.dark * 0.8})`;
-      ctx.lineWidth = wide * 0.9;
+      ctx.strokeStyle = `rgba(58, 50, 40, ${c.dark * 0.55})`;
+      ctx.lineWidth = wide * 0.8;
       ctx.stroke();
       ctx.restore();
     }
@@ -562,7 +819,8 @@
     const scale = Math.max(2, Math.min(3, Math.ceil(window.devicePixelRatio || 1)));
 
     // measure, then draw
-    const ph = slip(document.createElement("canvas").getContext("2d"), c, new Map(), 1) + TOOTH;
+    const measured = slip(document.createElement("canvas").getContext("2d"), c, new Map(), 1);
+    const ph = measured.h + TOOTH;
     const none = bg.bg === "none";
     const side = none ? 0 : bg.pad;
     const W = PW + side * 2;
@@ -625,7 +883,21 @@
       ctx.restore();
     }
 
-    slip(ctx, c, icons, scale);
+    // the slip's ink on a sheet of its own: the head's wear takes the ink off
+    // it, and the worn ink is what prints on the paper, so a fault leaves the
+    // paper's own grain and folds untouched. A flat slip (aged off) is printed
+    // clean, as it comes from a head that is running well.
+    const sheet = document.createElement("canvas");
+    sheet.width = Math.round(PW * scale);
+    sheet.height = Math.round(ph * scale);
+    const ink = sheet.getContext("2d");
+    ink.setTransform(scale, 0, 0, scale, 0, 0);
+    const drawn = slip(ink, c, icons, scale);
+    if (bg.aged) press(ink, PW, ph, drawn.heavy, scale);
+    ctx.save();
+    ctx.clip(paper);
+    ctx.drawImage(sheet, 0, 0, PW, ph);
+    ctx.restore();
     ctx.restore();
     $("copy").disabled = $("save").disabled = !magpie.image;
     state.size = [W, H];
